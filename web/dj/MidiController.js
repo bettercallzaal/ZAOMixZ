@@ -1,5 +1,6 @@
 // MidiController.js — Web MIDI API support for hardware DJ controllers
 import { shouldAutoConnect, midiPermission, askToConnect, describeDevices, showFound } from './MidiAsk.js';
+import { mapFor, presetAction } from './ControllerMaps.js';
 // Built-in Pioneer DDJ Serato mappings + MIDI learn fallback
 
 // ── DEBUG HELPERS ───────────────────────────────────────────────
@@ -170,7 +171,7 @@ export class MidiController {
             if (!this.midiAccess) return; // the browser said no
         } else this._onMIDISuccess();
         // Say what was found, and what to do with a controller MixZ has no map for
-        showFound(describeDevices(this.devices, (n) => PIONEER_DDJ.detect(n)));
+        showFound(describeDevices(this.devices, (n) => PIONEER_DDJ.detect(n) || !!mapFor(n)));
     }
 
     async _requestMIDI() {
@@ -215,7 +216,8 @@ export class MidiController {
         this.midiAccess.inputs.forEach((input, id) => {
             _midiLog('info', `  INPUT: "${input.name}" id=${id} manufacturer="${input.manufacturer}" state=${input.state} connection=${input.connection}`);
             this.devices.push(input.name);
-            input.onmidimessage = (msg) => this._onMIDIMessage(msg);
+            // Each message says which device sent it, so a DDJ and a nanoKONTROL2 can run side by side
+            input.onmidimessage = (msg) => this._onMIDIMessage(msg, input.name);
         });
 
         this.midiAccess.outputs.forEach((output, id) => {
@@ -225,7 +227,8 @@ export class MidiController {
 
         if (this.devices.length > 0) {
             this.connected = true;
-            const name = this.devices[0];
+            // The DDJ can be any of the plugged-in devices, not only the first
+            const name = this.devices.find((d) => PIONEER_DDJ.detect(d)) || this.devices[0];
             this._updateStatus(name);
 
             // Auto-detect Pioneer DDJ
@@ -248,7 +251,7 @@ export class MidiController {
         this._renderDeviceList();
     }
 
-    _onMIDIMessage(msg) {
+    _onMIDIMessage(msg, from = '') {
         const [status, data1, data2] = msg.data;
         const channel = status & 0x0F;
         const type = status & 0xF0;
@@ -272,8 +275,15 @@ export class MidiController {
             return;
         }
 
-        // Pioneer DDJ built-in profile
-        if (this.activeProfile === 'pioneer-ddj') {
+        // Ready-made maps for small controllers (ControllerMaps.js)
+        const preset = from && !PIONEER_DDJ.detect(from) ? mapFor(from) : null;
+        if (preset) {
+            const hit = presetAction(preset, type, data1, data2);
+            if (hit) { this._executeAction(hit.action, hit.kind, hit.value ?? 0); return; }
+        }
+
+        // Pioneer DDJ built-in profile (only for messages from the DDJ when the sender is known)
+        if (this.activeProfile === 'pioneer-ddj' && (!from || PIONEER_DDJ.detect(from))) {
             this._handlePioneerDDJ(type, channel, data1, data2);
             return;
         }
@@ -1002,11 +1012,11 @@ export class MidiController {
                 const span = document.createElement('span');
                 span.className = 'midi-device';
                 span.textContent = d;
-                if (this.activeProfile === 'pioneer-ddj' && PIONEER_DDJ.detect(d)) {
+                if ((this.activeProfile === 'pioneer-ddj' && PIONEER_DDJ.detect(d)) || mapFor(d)) {
                     span.textContent += ' (ready)';
                     span.style.color = '#00ff88';
                 }
-                if (!(this.activeProfile === 'pioneer-ddj' && PIONEER_DDJ.detect(d))) span.textContent += ' (use LEARN)';
+                if (!((this.activeProfile === 'pioneer-ddj' && PIONEER_DDJ.detect(d)) || mapFor(d))) span.textContent += ' (use LEARN)';
                 el.appendChild(span);
             });
         } else {

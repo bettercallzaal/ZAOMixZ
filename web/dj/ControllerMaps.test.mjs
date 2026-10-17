@@ -1,0 +1,21 @@
+// node web/dj/ControllerMaps.test.mjs
+import { mapFor, presetAction, MAPS } from './ControllerMaps.js';
+let failed = 0, passed = 0;
+const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
+console.log('ControllerMaps');
+const nano = mapFor('nanoKONTROL2 SLIDER/KNOB'), lpd = mapFor('LPD8'), lpd2 = mapFor('LPD8 mk2');
+check('nanoKONTROL2 is recognised by its USB name', nano?.id === 'korg-nanokontrol2');
+check('LPD8 and LPD8 mk2 are recognised', lpd?.id === 'akai-lpd8' && lpd2?.id === 'akai-lpd8');
+check('LPK25 and a DDJ get no preset here', !mapFor('LPK25') && !mapFor('PIONEER DDJ-SB3'));
+check('nano fader 1 is deck A volume', JSON.stringify(presetAction(nano, 0xB0, 0, 127)) === JSON.stringify({ action: 'volA', kind: 'cc', value: 1 }));
+check('nano fader 8 is the crossfader', presetAction(nano, 0xB0, 7, 64).action === 'crossfader');
+check('nano M1 button press plays deck A', JSON.stringify(presetAction(nano, 0xB0, 48, 127)) === JSON.stringify({ action: 'deckA.play', kind: 'press' }));
+check('nano button release is a release, not a second play', presetAction(nano, 0xB0, 48, 0).kind === 'release');
+check('LPD8 pad 1 is deck A hot cue 1', JSON.stringify(presetAction(lpd, 0x90, 36, 100)) === JSON.stringify({ action: 'deckA.pad1', kind: 'press' }));
+check('LPD8 pad 5 is deck B hot cue 1', presetAction(lpd, 0x90, 40, 100).action === 'deckB.pad1');
+check('LPD8 pad off is a release', presetAction(lpd, 0x80, 36, 0).kind === 'release');
+check('LPD8 knob 4 is deck A volume on both models', presetAction(lpd, 0xB0, 4, 50).action === 'volA' && presetAction(lpd, 0xB0, 73, 50).action === 'volA');
+check('an unmapped control does nothing', presetAction(nano, 0xB0, 99, 127) === null);
+check('every action is one MixZ knows', MAPS.every((m) => Object.values(m.map).every((a) => /^(btn:)?(volA|volB|crossfader|eq[AB]\.(high|mid|low)|deck[AB]\.(play|cue|sync|pad[1-8]))$/.test(a))));
+console.log(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);

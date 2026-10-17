@@ -115,6 +115,10 @@ Scan the QR code. Choose **I AM THE DJ** to control the set (the computer asks y
 
 Plug it in by USB and open MixZ in Chrome, then CONTROLLER menu, CONNECT CONTROLLER. MixZ explains what it connects to before the browser asks; after the first yes it reconnects by itself. The jog wheels, play, cue, sync, faders, crossfader, EQ, filter knobs and pads work. **LIGHTS ON** turns on the controller's button lights. **DECK AUDIO** sends sound through the controller's headphone output. Pad modes: HOT CUE (mark a spot, jump back to it), FX FADE (sends a playing song out: high pass, low pass, loop, spin down), PAD SCRATCH (the eight switch pad picks) and SAMPLER (eight sample slots). Hold SHIFT for more: SHIFT + HOT CUE jumps 1 to 8 beats back or forward, SHIFT + FX FADE is a loop roll, SHIFT + PAD SCRATCH is the slicer (the current 8 beats, one per pad, played like drums). Moving the crossfader or pressing CUE takes over from DJ MixZ.
 
+## Other controllers
+
+Ready to use with no setup: Korg nanoKONTROL2 (faders 1 and 2 are the deck volumes, fader 8 the crossfader, knobs 1 to 6 the EQs, S/M/R on strips 1 and 2 are cue/play/sync) and AKAI LPD8 (pads 1 to 4 deck A hot cues, 5 to 8 deck B, knobs are EQs and volumes). Any other MIDI controller works through LEARN.
+
 ## Keyboard
 
 Press ? to see every shortcut. The main ones: Space plays or pauses (Shift + Space for deck B), Q plays deck A, and the left and right arrows move the crossfader.

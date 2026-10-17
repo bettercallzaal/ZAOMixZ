@@ -55,7 +55,7 @@ export function askToConnect(doc = document) {
 // devices are found and connected?"). known(name) says whether MixZ has a built-in map.
 export function describeDevices(names = [], known = () => false) {
     const devices = [...new Set(names.filter(Boolean))].map((name) => known(name)
-        ? { name, ready: true, line: `${name}: ready, every control is mapped.` }
+        ? { name, ready: true, line: `${name}: ready.` }
         : { name, ready: false, line: `${name}: found. MixZ has no built-in map for it yet, so use LEARN: press LEARN, pick what to control, then move the knob or pad.` });
     if (!devices.length) {
         return { devices, title: 'No controller found', lines: [

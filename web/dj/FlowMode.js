@@ -50,9 +50,19 @@ export class FlowMode {
         this._transitioning = false;
     }
 
-    // Called by player.js when AutoTransition is cancelled mid-mix (CANCEL on AUTO, or takeover)
+    // Called by player.js when AutoTransition is cancelled mid-mix (CANCEL on AUTO, or takeover).
+    // The crossfader says where the mix was left: past halfway the incoming song is the one the
+    // room hears, so it becomes the current song. Before halfway it stays next; it has already
+    // gone in the setlist, so it is not logged again, and its deck is reused when it mixes in.
     onTransitionCancelled() {
+        const mix = this._mixing;
+        this._mixing = null;
         this.cancelTransition();
+        if (!mix) return;
+        const xf = parseFloat(document.getElementById('crossfader')?.value);
+        const into = Number.isFinite(xf) ? (mix.direction === 'AtoB' ? xf / 100 : 1 - xf / 100) : 0;
+        this._aired = mix;
+        if (into >= 0.5) this.onTransitionComplete(mix.direction);
     }
 
     toggle() {
@@ -123,8 +133,7 @@ export class FlowMode {
         this.dj.audioRouter.resume();
         const deckA = this.dj.decks.A;
         if (this._loadTrackToDeck(deckA, track) === false) { this._startNext(); return; }
-        this._logPlay(deckA.id, track);
-        this._playWhenReady(deckA);
+        this._playWhenReady(deckA, track);
 
         // Auto-suggest next tracks
         this._suggestNext();
@@ -134,26 +143,38 @@ export class FlowMode {
     }
 
     // Start deck playback as soon as its song has loaded; on a load error try the next song.
-    _playWhenReady(deck) {
+    // The song goes in the setlist here, once it has loaded, not when its load starts.
+    _playWhenReady(deck, track) {
         const ws = deck.wavesurfer;
         if (!ws) return;
         const token = (this._startToken = (this._startToken || 0) + 1);
+        // ready and error are each registered once, and the one that does not fire stays on the
+        // deck: an error on a later song must not restart the set. Whichever comes first wins.
+        let settled = false;
         const go = () => {
-            if (token !== this._startToken || !this.enabled) return;
+            if (settled || token !== this._startToken || !this.enabled) return;
+            settled = true;
             this.dj.audioRouter.resume();
             if (!deck.isPlaying) deck.play();
+            this._logPlay(deck.id, track);
         };
         if (deck.isLoaded && ws.getDuration() > 0) { go(); return; }
         ws.once('ready', go);
         ws.once('error', () => {
-            if (token !== this._startToken || !this.enabled || deck.isPlaying) return;
+            if (settled || token !== this._startToken || !this.enabled || deck.isPlaying) return;
+            settled = true;
             console.warn('[FlowMode] First song would not load, trying the next one');
             this._startNext();
         });
     }
 
     _startNext() {
-        if (this.currentTrack) this.onTrackDropped?.(this.currentTrack);
+        if (this.currentTrack) {
+            // It never played: take it back out of the played list
+            const at = this.playedInSession.lastIndexOf(this.currentTrack.id || this.currentTrack.title);
+            if (at >= 0) this.playedInSession.splice(at, 1);
+            this.onTrackDropped?.(this.currentTrack);
+        }
         this._startFails = (this._startFails || 0) + 1;
         if (this._startFails > 5 || this.queue.length === 0) { this._startFails = 0; return; }
         this.start(this.queue.shift());
@@ -241,6 +262,8 @@ export class FlowMode {
 
         // Swap current deck
         this.currentDeck = this.currentDeck === 'A' ? 'B' : 'A';
+        this._mixing = null;
+        this._aired = null;
         this._transitioning = false;
         this._nearEndTriggered = false;
 
@@ -273,12 +296,17 @@ export class FlowMode {
         // or the wait below sees the OLD track as ready and starts the mix before the new one
         // has loaded (the new track then lands silent at 0:00).
         const incoming = this.dj.decks[idleDeck];
-        if (incoming.isPlaying) { try { incoming.pause(); } catch (e) { /* not fatal */ } }
-        incoming.isLoaded = false;
+        // A mix into this song was cancelled early: its deck still holds it, so mix it in
+        // from where it is instead of reloading it (no gap at the end of the track).
+        const reuse = this._aired?.track === nextTrack && this._aired.deck === idleDeck && incoming.isLoaded;
+        if (!reuse) {
+            if (incoming.isPlaying) { try { incoming.pause(); } catch (e) { /* not fatal */ } }
+            incoming.isLoaded = false;
+        }
 
         // Load next track to idle deck (handles both local and streaming).
         // A refused track (no licence) leaves the queue and the current song keeps playing.
-        if (this._loadTrackToDeck(incoming, nextTrack) === false) {
+        if (!reuse && this._loadTrackToDeck(incoming, nextTrack) === false) {
             this._dropNext(nextTrack);
             this._autoFillQueue();
             this._updateUI();
@@ -335,7 +363,7 @@ export class FlowMode {
                     sourceBPM: this.dj.decks[this.currentDeck].getBPM(),
                     targetBPM: this.dj.decks[idleDeck].getBPM(),
                 });
-                if (engine.running) { this._markPlayed(idleDeck, track); return; }
+                if (engine.running) { this._mixing = { track, deck: idleDeck, direction }; this._markPlayed(idleDeck, track); return; }
             } catch (e) {
                 console.warn('[FlowMode] Mix engine failed, cutting to the next song instead:', e);
                 try { engine.cancel?.(); } catch (e2) { /* already stopped */ }
@@ -360,6 +388,7 @@ export class FlowMode {
 
     // The song is on air: only now does it count as played and go in the setlist.
     _markPlayed(deckId, track) {
+        if (this._aired?.track === track) return; // already on air once, in a mix that was cancelled
         this.playedInSession.push(track.id || track.title);
         this._logPlay(deckId, track);
     }

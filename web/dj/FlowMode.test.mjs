@@ -26,26 +26,29 @@ const tick = (ms) => {
     now = end;
 };
 const el = () => ({ classList: { add() {}, remove() {}, toggle() {} }, addEventListener() {}, remove() {}, set innerHTML(v) {} });
-globalThis.document = { getElementById: () => null, querySelector: () => null, createElement: el, body: { appendChild() {} } };
+const xfader = { value: 0, addEventListener() {} };
+globalThis.document = { getElementById: (id) => (id === 'crossfader' ? xfader : null), querySelector: () => null, createElement: el, body: { appendChild() {} } };
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 
 const { FlowMode } = await import('./FlowMode.js');
 const { DjMixz } = await import('./DjMixz.js');
 
 // ── Fake decks and mix engine ─────────────────────────────────
-// A song titled REFUSED is turned away by the deck; NEVER never finishes loading;
-// anything else is ready 300ms after it is loaded.
+// A song titled REFUSED is turned away by the deck; NEVER never finishes loading; BROKEN
+// fails 300ms in; anything else is ready 300ms after it is loaded.
 function fakeDeck(id) {
     const handlers = {};
+    const fire = (ev) => { const fns = handlers[ev] || []; handlers[ev] = []; fns.forEach((fn) => fn()); }; // once: each listener runs one time
     const deck = {
         id, isLoaded: false, isPlaying: false, time: 0, duration: 200, title: null, loads: [],
-        wavesurfer: { once: (ev, fn) => { handlers[ev] = fn; }, getDuration: () => deck.duration },
+        wavesurfer: { once: (ev, fn) => { (handlers[ev] ||= []).push(fn); }, getDuration: () => deck.duration },
         loadDirect(url, meta) {
             deck.loads.push(meta.title);
             if (meta.title === 'REFUSED') return false;
             deck.isLoaded = false; deck.isPlaying = false; deck.title = meta.title; deck.time = 0;
             deck.metadata = { metadata: { ...meta } };
-            if (meta.title !== 'NEVER') setTimeout(() => { if (deck.title === meta.title) { deck.isLoaded = true; handlers.ready?.(); } }, 300);
+            if (meta.title === 'BROKEN') setTimeout(() => fire('error'), 300);
+            else if (meta.title !== 'NEVER') setTimeout(() => { if (deck.title === meta.title) { deck.isLoaded = true; fire('ready'); } }, 300);
             return true;
         },
         play() { deck.isPlaying = true; }, pause() { deck.isPlaying = false; },
@@ -200,7 +203,63 @@ console.log('Flow Mode: no mix engine');
     check('a cancelled mix does not leave Flow Mode stuck mid-transition', !flow._transitioning);
 }
 
-// ── 5. A person takes the decks mid-handover (DJ MixZ) ────────
+// ── 5. The first song fails, and a mix is cancelled part way ──
+console.log('Flow Mode: the first song fails to load');
+{
+    const { flow, decks, logged } = desk();
+    flow.queue = [song('two'), song('three')];
+    flow.start(song('BROKEN'));
+    tick(400);
+    tick(400);
+    check('the set opens with the next song instead', decks.A.isPlaying && decks.A.title === 'two');
+    check('the song that failed is not in the setlist or the played list', !logged.includes('BROKEN') && !flow.playedInSession.includes('BROKEN') && logged.join() === 'two');
+}
+{
+    const { flow, decks } = desk();
+    flow.queue = [song('two'), song('BROKEN'), song('four')];
+    flow.start(song('one'));
+    tick(400);
+    flow.currentDeck = 'B'; // the set has moved on and deck A is the idle deck again
+    decks.A.loadDirect('x', song('BROKEN')); // a later song fails to load on deck A
+    tick(400);
+    check('a load error on deck A later in the set does not restart the set', flow.currentTrack.title === 'one' && flow.queue[0]?.title === 'two');
+}
+console.log('Flow Mode: CANCEL part way through a mix');
+{
+    const { flow, decks, eng, logged } = desk();
+    flow.queue = [song('two'), song('three')];
+    flow.start(song('one'));
+    tick(400);
+    playTo(flow, decks.A, 25);
+    tick(400);
+    xfader.value = 70; // the mix was most of the way into deck B
+    eng.cancel();
+    check('past halfway, the incoming song becomes the current song', flow.currentDeck === 'B' && flow.currentTrack.title === 'two' && flow.queue[0]?.title === 'three');
+    check('and the near-end trigger is free for the next mix', !flow._nearEndTriggered && !flow._transitioning);
+    playTo(flow, decks.B, 25);
+    tick(400);
+    check('the next mix goes from B into three', decks.A.title === 'three' && eng.starts.length === 2 && eng.starts[1].direction === 'BtoA');
+    check('every song is in the setlist once', logged.join() === 'one,two,three');
+}
+{
+    const { flow, decks, eng, logged } = desk();
+    flow.queue = [song('two'), song('three')];
+    flow.start(song('one'));
+    tick(400);
+    playTo(flow, decks.A, 25);
+    tick(400);
+    xfader.value = 20; // cancelled early: the room still mostly hears deck A
+    eng.cancel();
+    check('before halfway, the current song stays and the incoming one is still next', flow.currentDeck === 'A' && flow.queue[0]?.title === 'two');
+    check('the mix is not restarted at once over the cancel', (playTo(flow, decks.A, 20), eng.starts.length === 1));
+    decks.A.time = decks.A.duration; flow.onTrackNearEnd(decks.A); // the outgoing song runs out
+    tick(400);
+    check('at the end it mixes in from the deck already holding it, no reload', eng.starts.length === 2 && decks.B.loads.filter((t) => t === 'two').length === 1);
+    eng.finish();
+    check('and the cancelled song is in the setlist once', logged.join() === 'one,two' && flow.currentTrack.title === 'two');
+}
+
+// ── 6. A person takes the decks mid-handover (DJ MixZ) ────────
 console.log('DJ MixZ: takeover and dropped songs');
 const plan = (titles) => titles.map((t, i) => ({ track: song(t), energy: 0.5, target: 0.5, move: i ? { type: 'blend', bars: 16, seconds: 8, why: 'test' } : null }));
 {

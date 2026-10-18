@@ -1,5 +1,6 @@
 // node web/dj/RemoteLink.test.mjs
-import { newToken, validToken, linkKeys, seal, unseal, fresh, FRESH_MS, BROKERS, remoteUrl, cleanCommand, applyCommand, trackList, snapshot, HANDS_ON, NEXT_MODES, ICE_SERVERS, TRACK_SOURCES, VIEWER_OK } from './RemoteLink.js';
+import { newToken, validToken, linkKeys, seal, unseal, fresh, FRESH_MS, BROKERS, remoteUrl, cleanCommand, applyCommand, trackList, snapshot, HANDS_ON, NEXT_MODES, ICE_SERVERS, TRACK_SOURCES, VIEWER_OK, RemoteHost } from './RemoteLink.js';
+import { RequestQueue } from './RequestLine.js';
 
 let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
@@ -109,6 +110,25 @@ check('auto play on silence can be switched from the phone', cleanCommand({ a: '
 check('a viewer may only listen or ask for the mix link', VIEWER_OK.has('listen') && VIEWER_OK.has('share') && !VIEWER_OK.has('play') && !VIEWER_OK.has('stream') && !VIEWER_OK.has('crossfader'));
 check('the sound call has STUN, and any relay carries its login', ICE_SERVERS.some(s => String(s.urls).includes('stun:')) && ICE_SERVERS.filter(s => String(s.urls).includes('turn:')).every(s => s.username && s.credential));
 check('the dead free relay is gone', !ICE_SERVERS.some(s => String(s.urls).includes('openrelay.metered.ca')));
+
+// The desk's once-a-second request check, on a fake desk: DJ MixZ is mixing, one request waits.
+{
+    const tickDesk = (autoPlay) => {
+        const played = [];
+        const host = {
+            relay: {}, autoPlay, requests: new RequestQueue(), _tell() {}, _renderRequests() {},
+            dj: { decks: { A: { isPlaying: true, metadata: { metadata: { title: 'On Now', artist: 'X' } } }, B: { isPlaying: false } }, audioRouter: { _lastCrossfadePosition: 0 },
+                djMixz: { running: true, human: false, playNext: (t) => { played.push(t.title); return true; } } },
+        };
+        host.requests.add('p1', { name: 'Ana' }, { id: 'r1', title: 'Asked For', artist: 'Y' });
+        RemoteHost.prototype._requestTick.call(host);
+        return { played, status: host.requests.items[0].status };
+    };
+    const off = tickDesk(false);
+    check('requests: with AUTO-PLAY off, a waiting request is not put on air by itself', off.played.length === 0 && off.status === 'waiting');
+    const on = tickDesk(true);
+    check('requests: with AUTO-PLAY on, DJ MixZ takes the oldest one next', on.played.join() === 'Asked For' && on.status === 'next');
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -112,6 +112,16 @@ export class RequestQueue {
 
 const brief = (r) => ({ rid: r.rid, title: r.title, artist: r.artist, name: r.name, also: r.also.length, note: r.note, status: r.status });
 
+// May a request go on air by itself? Only when the DJ has switched AUTO-PLAY REQUESTS on,
+// DJ MixZ is mixing, nobody has the decks and nothing is already lined up next. A request
+// sent by an outside agent (from: 'agent') never plays without a tap, switch or not.
+// Otherwise every request waits on the board for PLAY NEXT.
+export function autoPick(queue, { on = false, running = false, human = false } = {}) {
+    if (!on || !running || human) return null;
+    if (queue.items.some((r) => r.status === 'next')) return null;
+    return queue.items.find((r) => r.status === 'waiting' && r.from !== 'agent') || null;
+}
+
 // What one caller's phone shows about their own requests.
 export function forCaller(queue, device) {
     return queue.items.filter((r) => r.devices.includes(device) && r.status !== 'passed').slice(-4).map((r) => ({ ...brief(r), tape: !!r.tape, mine: r.device === device }));

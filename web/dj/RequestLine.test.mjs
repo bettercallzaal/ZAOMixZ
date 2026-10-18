@@ -1,5 +1,5 @@
 // node web/dj/RequestLine.test.mjs
-import { cleanRequest, RequestQueue, songKey, forCaller, statusLine, canTape, PER_PHONE, MAX_WAITING, NAME_MAX, NOTE_MAX } from './RequestLine.js';
+import { cleanRequest, RequestQueue, songKey, forCaller, statusLine, canTape, autoPick, PER_PHONE, MAX_WAITING, NAME_MAX, NOTE_MAX } from './RequestLine.js';
 
 let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
@@ -60,6 +60,22 @@ check('every status has words', ['waiting', 'next', 'onair', 'played', 'passed']
 
 console.log('RequestLine: taping');
 check('tape only when the licence allows radio', canTape({ uses: { radio: true } }) && !canTape({ uses: { radio: false } }) && !canTape(null));
+
+console.log('RequestLine: a request goes on air only with a tap, or with AUTO-PLAY on');
+{
+    const q = fresh();
+    q.add('p1', { name: 'Ana' }, song('Rude Boy'));
+    const run = { running: true, human: false };
+    check('AUTO-PLAY off (the default): nothing slots itself in', autoPick(q, run) === null && autoPick(q, { ...run, on: false }) === null);
+    check('AUTO-PLAY on: the oldest waiting request is picked', autoPick(q, { ...run, on: true })?.title === 'Rude Boy');
+    check('never while a person has the decks, or DJ MixZ is off', autoPick(q, { on: true, running: true, human: true }) === null && autoPick(q, { on: true, running: false }) === null);
+    const agent = fresh();
+    const r = agent.add('bot', { name: 'Bot' }, song('From A Bot')).request; r.from = 'agent';
+    check('a request from an outside agent never plays by itself, switch or not', autoPick(agent, { ...run, on: true }) === null);
+    q.set(q.first().rid, 'next');
+    q.add('p2', { name: 'Bo' }, song('Second'));
+    check('only one request lined up next at a time', autoPick(q, { ...run, on: true }) === null);
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

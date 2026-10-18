@@ -31,6 +31,9 @@ export class AutoTransition {
         // Filter-sweep state
         this._filterSweepCleanupNeeded = false;
 
+        // Blend state: the low EQ each deck had before the bass swap, put back afterwards
+        this._eqBefore = null;
+
         this._initUI();
     }
 
@@ -144,7 +147,9 @@ export class AutoTransition {
 
             case 'blend':
             default:
-                // Standard crossfade — no special init
+                // The blend swaps the bass (source low cut to -24dB, target low set to 0).
+                // Remember what each deck had so _cleanupEffects can put it back.
+                this._eqBefore = { A: this._lowEQ('A'), B: this._lowEQ('B') };
                 break;
         }
     }
@@ -462,6 +467,21 @@ export class AutoTransition {
             this.router.setFilter('B', 0.5);
             this._filterSweepCleanupNeeded = false;
         }
+
+        if (this._eqBefore) {
+            // Undo the bass swap: the deck that went out kept a -24dB low cut, and the one
+            // coming in lost the DJ's own low setting. Both get back what they had.
+            for (const id of ['A', 'B']) this.router.setEQ(id, 'low', this._eqBefore[id]);
+            this._eqBefore = null;
+        }
+    }
+
+    // A deck's low EQ as the DJ set it (a killed band keeps its setting aside)
+    _lowEQ(id) {
+        const r = this.router;
+        if (r._eqKillState?.[id]?.low) return r._eqSavedGain?.[id]?.low ?? 0;
+        const v = r.channels?.[id]?.eqLow?.gain?.value;
+        return Number.isFinite(v) ? v : 0;
     }
 
     // Helper to get the DJPlayer instance (parent of router)

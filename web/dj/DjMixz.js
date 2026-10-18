@@ -315,9 +315,13 @@ export class DjMixz {
     _advise() {
         const now = this.plan[this.index], next = this.plan[this.index + 1];
         if (!this.running || this.human || this.director === 'off' || !now || !next) { this.advice = null; return null; }
-        const requests = (this.dj.requestLine?.waiting?.() || [])
-            .filter((r) => r.track && (r.track.streamUrl || r.track.dataFile))
-            .map((r) => ({ track: r.track, count: r.devices?.length || 1 }));
+        // A request line that throws costs the requests signal, never the bar or the set
+        let requests = [];
+        try {
+            requests = (this.dj.requestLine?.waiting?.() || [])
+                .filter((r) => r.track && (r.track.streamUrl || r.track.dataFile))
+                .map((r) => ({ track: r.track, count: r.devices?.length || 1 }));
+        } catch (e) { console.warn('[DjMixz] request line unreadable, advising without it:', e); }
         this.advice = advise({
             current: now.track, planned: next.track, target: next.target ?? energyOf(next.track),
             rest: this.plan.slice(this.index + 2).map((p) => p.track), harmonic: this.dj.harmonic,

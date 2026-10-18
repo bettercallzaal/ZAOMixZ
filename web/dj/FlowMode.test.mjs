@@ -333,6 +333,8 @@ const { HarmonicMixer } = await import('./HarmonicMixer.js');
     eng.finish();
     mixz.takeOver('button');
     check('while a person has the decks there is no advice', mixz._advise() === null);
+    const before = flow.queue[0];
+    check('and a swap is refused, the queue untouched', mixz.swapNext(other) === false && flow.queue[0] === before);
     mixz.handBack();
     mixz.director = 'off';
     check('with the director off there is no advice', mixz._advise() === null);
@@ -349,6 +351,12 @@ const { HarmonicMixer } = await import('./HarmonicMixer.js');
     const alt = mixz._advise()?.alts.find((a) => a.track === wanted);
     check('a waiting request shows up as a pick, with who asked', alt && alt.reasons.includes('requested by 2 listeners'));
     check('approving it plays it next', mixz.swapNext(wanted) && flow.queue[0] === wanted);
+    dj.requestLine = { waiting: () => { throw new Error('board gone'); } };
+    const warn = console.warn; console.warn = () => {};
+    let adv2, threw = false;
+    try { adv2 = mixz._advise(); } catch (e) { threw = true; }
+    console.warn = warn;
+    check('a request line that throws does not break the advice', !threw && adv2 && adv2.planned);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

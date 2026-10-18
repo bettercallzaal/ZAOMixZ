@@ -169,6 +169,36 @@ console.log('Flow Mode: the next song never loads');
     check('a song added after the queue ran dry still gets mixed in before the end', decks.B.title === 'late' && eng.starts.length === 1);
 }
 
+// ── 3b. A slow load leaves less time than the fade ───────────
+console.log('Flow Mode: the fade fits the time left');
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    decks.A.time = decks.A.duration - 4; // the load took a while: 4 seconds left
+    tick(400);
+    check('with 4 seconds left an 8 second fade is shortened to end before the song does', eng.starts.length === 1 && eng.starts[0].seconds <= 3.5 && eng.starts[0].seconds >= 1.5);
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    decks.A.time = decks.A.duration; decks.A.isPlaying = false; // the outgoing song ran out while loading
+    tick(400);
+    check('if the outgoing song has already ended, it cuts straight to the new one', eng.starts.length === 0 && decks.B.isPlaying && flow.currentDeck === 'B');
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('with plenty of time left the fade keeps its planned length', eng.starts[0].seconds === 8);
+}
+
 // ── 4. No mix engine, or one that fails ───────────────────────
 console.log('Flow Mode: no mix engine');
 {
@@ -254,7 +284,9 @@ console.log('Flow Mode: CANCEL part way through a mix');
     check('the mix is not restarted at once over the cancel', (playTo(flow, decks.A, 20), eng.starts.length === 1));
     decks.A.time = decks.A.duration; flow.onTrackNearEnd(decks.A); // the outgoing song runs out
     tick(400);
-    check('at the end it mixes in from the deck already holding it, no reload', eng.starts.length === 2 && decks.B.loads.filter((t) => t === 'two').length === 1);
+    // The outgoing song has run out, so there is nothing to fade from: it cuts to the deck
+    // already holding the song (it fades in only while the outgoing song still plays).
+    check('at the end it cuts to the deck already holding it, no reload', eng.starts.length === 1 && flow.currentDeck === 'B' && decks.B.isPlaying && decks.B.loads.filter((t) => t === 'two').length === 1);
     eng.finish();
     check('and the cancelled song is in the setlist once', logged.join() === 'one,two' && flow.currentTrack.title === 'two');
 }

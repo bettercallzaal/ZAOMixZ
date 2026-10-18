@@ -1,5 +1,5 @@
 // node web/dj/NowPlaying.test.mjs
-import { cleanTitle, liveDeck, songPage } from './NowPlaying.js';
+import { cleanTitle, liveDeck, songPage, audiusPage } from './NowPlaying.js';
 
 let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
@@ -19,6 +19,11 @@ check('nothing playing: nothing is live', liveDeck({ A: {}, B: {} }, 0.5) === nu
 check('an Audius song links to its page', songPage({ source: 'audius', permalink: '/imanafrikah/rude-boy' }) === 'https://audius.co/imanafrikah/rude-boy');
 check('a SongChainn song links to SongChainn', songPage({ id: 'songchainn:94e4', _source: 'songchainn' }) === 'https://songchainn.xyz' && songPage({ id: 'songchainn:94e4' }) === 'https://songchainn.xyz');
 check('a local file has no page', songPage({ id: 'x', source: 'local' }) === null && songPage(null) === null);
+
+// An Audius permalink can only make a link on audius.co
+check('audius: a normal permalink is the song page, as is', audiusPage('/c3/jewellry') === 'https://audius.co/c3/jewellry' && songPage({ source: 'audius', permalink: '/c3/jewellry' }) === 'https://audius.co/c3/jewellry');
+check('audius: a permalink that would point at another host gives no link', audiusPage('@other.example/x') === null && audiusPage('.other.example/x') === null && songPage({ source: 'audius', permalink: '@other.example/x' }) === null);
+check('audius: no leading slash, or not a string, gives no link', audiusPage('c3/jewellry') === null && audiusPage(null) === null && audiusPage(42) === null);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -200,8 +200,8 @@ export class AutoTransition {
             fadeOut = Math.cos(angle); // A fades from 1 to 0
             fadeIn = Math.sin(angle);  // B fades from 0 to 1
         } else {
-            fadeIn = Math.cos(angle);  // A fades from 0 to 1
-            fadeOut = Math.sin(angle); // B fades from 1 to 0
+            fadeIn = Math.sin(angle);  // A fades from 0 to 1
+            fadeOut = Math.cos(angle); // B fades from 1 to 0
         }
 
         // Map to crossfader position (0 = full A, 1 = full B)

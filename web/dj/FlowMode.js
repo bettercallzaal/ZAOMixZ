@@ -89,6 +89,12 @@ export class FlowMode {
                 artwork: track.artwork || null,
                 source: track.source || 'stream',
                 id: track.id || track.sourceId || null,
+                // The deck checks the licence on this meta (Licence.js canPlay): a track's own
+                // licence, its Audius Creative Commons licence and its uploader must come with it,
+                // as they do when the library loads a track by hand.
+                licence: track.licence || null,
+                audiusLicense: track.audiusLicense || null,
+                uploader: track.uploader || null,
             };
             return deck.loadDirect(streamUrl, meta) !== false;
         } else if (track.dataFile) {

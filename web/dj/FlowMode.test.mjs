@@ -120,6 +120,21 @@ console.log('Flow Mode: a song that loads');
     check('played and setlist both list one then two', flow.playedInSession.join() === 'one,two' && logged.join() === 'one,two');
 }
 
+// ── 1b. A licensed stream keeps its licence on the way to the deck ──
+console.log('Flow Mode: a stream with its own licence');
+{
+    const { canPlay } = await import('./Licence.js');
+    const { flow, decks, eng } = desk();
+    const plain = decks.B.loadDirect;
+    decks.B.loadDirect = (url, meta) => (canPlay(meta).ok ? plain(url, meta) : false); // what the real deck does
+    const licensed = { id: 'own', title: 'Own Song', artist: 'Some Artist', source: 'zao-source', streamUrl: 'https://x/own.mp3',
+        licence: { artist: 'Some Artist', uses: { stream: true, dj: true, radio: true, commercial: false }, terms: 'https://example.org/grant' } };
+    flow.queue = [licensed];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('a stream that carries its own licence is not refused at the deck', decks.B.title === 'Own Song' && eng.starts.length === 1);
+}
+
 // ── 2. The next song is refused ───────────────────────────────
 console.log('Flow Mode: the next song is refused');
 {

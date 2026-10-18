@@ -631,6 +631,11 @@ body.pro-mode .toolbar-select { height: 30px; border-radius: 8px; background: #1
 .djmixz-bar-vote { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--mz-text); }
 .djmixz-bar-btn.vote { height: 32px; padding: 0 12px; color: var(--mz-text); background: linear-gradient(180deg, #232737, #151824); border-color: var(--mz-line-hi); }
 .djmixz-bar-btn.vote:hover { border-color: var(--mz-play); }
+/* Flow Director: why the next song fits, and other picks to swap in */
+.djmixz-bar-why { flex-basis: 100%; text-align: center; font-size: 0.78rem; color: var(--mz-muted); }
+.djmixz-bar-btn.swap { height: 30px; padding: 0 10px; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mz-text); background: linear-gradient(180deg, #232737, #151824); border-color: var(--mz-line-hi); }
+.djmixz-bar-btn.swap.better { border-color: var(--mz-play); }
+.djmixz-bar-btn.swap:hover { border-color: var(--mz-play); }
 
 /* Cover art on the deck badge */
 .deck-label.has-cover {

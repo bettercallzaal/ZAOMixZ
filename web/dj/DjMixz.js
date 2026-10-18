@@ -9,6 +9,7 @@
 // Playing rides on the app's FlowMode and AutoTransition.
 
 import { keyRelation } from './SwitchPad.js';
+import { advise } from './FlowDirector.js';
 
 // Mood = the energy the room should feel, from the first track (x = 0) to the last (x = 1).
 export const MOODS = [
@@ -43,7 +44,7 @@ export function energyOf(t) {
     return clamp01(g ? tempo * 0.55 + g[1] * 0.45 : tempo);
 }
 
-function tempoGap(a, b) {
+export function tempoGap(a, b) {
     const x = num(a.bpm), y = num(b.bpm);
     if (!x || !y) return { pct: null, doubled: false };
     const r = y / x;
@@ -52,6 +53,15 @@ function tempoGap(a, b) {
 }
 
 const KEY_COST = { same: 0, up1: 0, down1: 0.05, flip: 0.05, up2: 0.3, unknown: 0.4, clash: 1 };
+
+// How well two tracks sit next to each other: keys, tempo, and not the same artist twice.
+// Lower is better. The set planner and the Flow Director (FlowDirector.js) both use it.
+export function joinCost(x, y, harmonic) {
+    if (!x || !y) return 0;
+    const g = tempoGap(x, y);
+    return KEY_COST[keyRelation(harmonic, x.key, y.key)] + 0.9 * (g.pct === null ? 0.4 : g.doubled ? 0.35 : Math.min(1, Math.abs(g.pct) / 9))
+        + (x.artist && x.artist === y.artist ? 0.25 : 0);
+}
 
 // The move from track a to track b. `prevTypes` are the moves already used, newest last.
 export function planTransition(a, b, harmonic, prevTypes = []) {
@@ -100,13 +110,7 @@ export function planSet(tracks, moodId, harmonic, opts = {}) {
 
     const targets = Array.from({ length: count }, (_, i) => mood.curve(count === 1 ? 0 : i / (count - 1)));
 
-    // How well two tracks sit next to each other: keys, tempo, and not the same artist twice.
-    const join = (x, y) => {
-        if (!x || !y) return 0;
-        const g = tempoGap(x, y);
-        return KEY_COST[keyRelation(harmonic, x.key, y.key)] + 0.9 * (g.pct === null ? 0.4 : g.doubled ? 0.35 : Math.min(1, Math.abs(g.pct) / 9))
-            + (x.artist && x.artist === y.artist ? 0.25 : 0);
-    };
+    const join = (x, y) => joinCost(x, y, harmonic);
 
     const seat = new Array(count);
     if (pool.length >= count * 1.5) {
@@ -195,6 +199,8 @@ export class DjMixz {
         this.score = { ai: 0, human: 0 };
         this.round = 1;
         this._voteOpen = false;
+        this.director = 'ask';   // 'ask': say why each next song fits and offer swaps; 'off': just play the plan
+        this.advice = null;      // the director's last word on the slot coming up
         this._buildUI();
     }
 
@@ -296,6 +302,50 @@ export class DjMixz {
         if (at === this.index + 1) this._armNext();
         this._renderPlan();
         this._renderBar();
+    }
+
+    // A handover is under way (or about to start): the next song is locked in.
+    _busy() {
+        const flow = this.dj.flowMode;
+        return !!(flow && (flow._transitioning || flow._nearEndTriggered));
+    }
+
+    // The director's view of the slot coming up (FlowDirector.js). Advice only: nothing changes
+    // until a person presses SWAP. Waiting requests from the request line count as a signal.
+    _advise() {
+        const now = this.plan[this.index], next = this.plan[this.index + 1];
+        if (!this.running || this.human || this.director === 'off' || !now || !next) { this.advice = null; return null; }
+        const requests = (this.dj.requestLine?.waiting?.() || [])
+            .filter((r) => r.track && (r.track.streamUrl || r.track.dataFile))
+            .map((r) => ({ track: r.track, count: r.devices?.length || 1 }));
+        this.advice = advise({
+            current: now.track, planned: next.track, target: next.target ?? energyOf(next.track),
+            rest: this.plan.slice(this.index + 2).map((p) => p.track), harmonic: this.dj.harmonic,
+            requests,
+        });
+        return this.advice;
+    }
+
+    // A person approved one of the director's other picks: it plays next instead. The song it
+    // replaces moves back one slot rather than leaving the set. Refused during a handover.
+    swapNext(track) {
+        const flow = this.dj.flowMode;
+        if (!this.running || this.human || !flow || !track || this._busy()) return false;
+        const at = this.plan.findIndex((p, i) => i > this.index + 1 && idOf(p.track) === idOf(track));
+        if (at < 0) return this.playNext(track); // a request that is not in the plan yet
+        const [picked] = this.plan.splice(at, 1);
+        this.plan.splice(this.index + 1, 0, picked);
+        // Both joins changed: plan those two moves afresh
+        const types = this.plan.slice(1, this.index + 1).map((p) => p.move?.type).filter(Boolean);
+        picked.move = planTransition(this.plan[this.index].track, picked.track, this.dj.harmonic, types);
+        const after = this.plan[this.index + 2];
+        if (after) after.move = planTransition(picked.track, after.track, this.dj.harmonic, [...types, picked.move.type]);
+        flow.queue = this.plan.slice(this.index + 1).map((p) => p.track);
+        this._armNext();
+        this._say(`Swapped in: ${picked.track.title} plays next.`);
+        this._renderPlan();
+        this._renderBar();
+        return true;
     }
 
     // Set FlowMode up for the next move: how long before the end to start, and how.
@@ -472,17 +522,21 @@ export class DjMixz {
         if (!bar) {
             bar = document.createElement('div'); bar.id = 'djmixz-bar'; bar.className = 'djmixz-bar';
             document.body.appendChild(bar);
-            bar.addEventListener('click', (e) => { const act = e.target.closest?.('[data-act]')?.dataset.act; if (act === 'take') this.takeOver('button'); if (act === 'back') this.handBack(); if (act === 'vote-ai' || act === 'vote-human') this.vote(act === 'vote-ai' ? 'ai' : 'human'); });
+            bar.addEventListener('click', (e) => { const el = e.target.closest?.('[data-act]'); const act = el?.dataset.act; if (act === 'swap') { const alt = this.advice?.alts?.[Number(el.dataset.i)]; if (alt) this.swapNext(alt.track); } if (act === 'take') this.takeOver('button'); if (act === 'back') this.handBack(); if (act === 'vote-ai' || act === 'vote-human') this.vote(act === 'vote-ai' ? 'ai' : 'human'); });
         }
         const next = this.plan[this.index + 1];
         const esc = (x) => String(x || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const turn = this.b2b ? `<span class="djmixz-bar-turn">${this._turn} of ${this.b2b} this turn</span>` : '';
         const score = this.battle ? `<span class="djmixz-bar-score">ROUND ${this.round} <b>DJ MIXZ ${this.score.ai}</b> : <b>${this.score.human} LIVE DJ</b></span>` : '';
         const votes = this.battle && this._voteOpen ? `<span class="djmixz-bar-vote">Who took round ${this.round}?<button class="djmixz-bar-btn vote" data-act="vote-ai">DJ MIXZ</button><button class="djmixz-bar-btn vote" data-act="vote-human">LIVE DJ</button></span>` : '';
+        const adv = this._advise();
+        const busy = this._busy();
+        const why = adv ? `<span class="djmixz-bar-why">why: ${esc(adv.why)}</span>` : '';
+        const swaps = adv && !busy ? adv.alts.map((a, i) => `<button class="djmixz-bar-btn swap${a.better ? ' better' : ''}" data-act="swap" data-i="${i}" title="${esc(a.reasons.join(', '))}">${a.better ? 'BETTER FIT: ' : 'OR: '}${esc(a.track.title)}</button>`).join('') : '';
         bar.classList.toggle('human', this.human);
         bar.innerHTML = this.human
             ? `<span class="djmixz-bar-who">YOU HAVE THE DECKS</span><span class="djmixz-bar-next">DJ MixZ is standing by</span>${turn}${score}<button class="djmixz-bar-btn" data-act="back">HAND BACK TO DJ MIXZ</button>`
-            : `<span class="djmixz-bar-who">DJ MIXZ IS MIXING</span><span class="djmixz-bar-next">${next ? 'next: ' + esc(next.track.title) + ', ' + esc(next.move?.type.replace('-', ' ')) : 'last track'}</span>${turn}${score}${votes}<button class="djmixz-bar-btn" data-act="take">TAKE OVER</button>`;
+            : `<span class="djmixz-bar-who">DJ MIXZ IS MIXING</span><span class="djmixz-bar-next">${next ? 'next: ' + esc(next.track.title) + ', ' + esc(next.move?.type.replace('-', ' ')) : 'last track'}</span>${why}${swaps}${turn}${score}${votes}<button class="djmixz-bar-btn" data-act="take">TAKE OVER</button>`;
     }
 
     // ── Panel ──────────────────────────────────────────────────

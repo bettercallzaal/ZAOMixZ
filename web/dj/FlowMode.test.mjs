@@ -306,5 +306,50 @@ const plan = (titles) => titles.map((t, i) => ({ track: song(t), energy: 0.5, ta
     check('a song that never loads comes out of the plan too', !mixz.plan.some((p) => p.track.title === 'NEVER') && mixz.plan[mixz.index + 1]?.track.title === 'three');
 }
 
+// ── 7. The Flow Director: advice, approval, override ──────────
+console.log('DJ MixZ: the Flow Director');
+const tp = (title, bpm, key, genre) => ({ ...song(title), bpm, key, genre });
+const dplan = (tracks, targets) => tracks.map((t, i) => ({ track: t, energy: 0.5, target: targets[i], move: i ? { type: 'blend', bars: 16, seconds: 8, why: 'test' } : null }));
+const { HarmonicMixer } = await import('./HarmonicMixer.js');
+{
+    const { dj, flow, decks, eng } = desk();
+    dj.harmonic = new HarmonicMixer();
+    const mixz = new DjMixz(dj);
+    const quiet = tp('quiet', 92, 'A minor', 'Lo-Fi'), fit = tp('fit', 125, 'E minor', 'House'), other = tp('other', 124, 'F# major', 'House');
+    mixz.plan = dplan([tp('one', 124, 'A minor', 'House'), quiet, other, fit], [0.7, 0.72, 0.72, 0.72]);
+    mixz.start();
+    tick(400);
+    const adv = mixz._advise();
+    check('the director says why the planned next song is there', adv?.planned.track === quiet && /energy much lower/.test(adv.why));
+    check('and offers the better fit first', adv.alts[0].track === fit && adv.alts[0].better);
+    check('nothing changes until a person approves', mixz.plan[1].track === quiet && flow.queue[0] === quiet);
+    check('SWAP puts the pick next, in the plan and in the queue', mixz.swapNext(fit) && mixz.plan[1].track === fit && flow.queue[0] === fit);
+    check('the song it replaced stays in the set, one slot later', mixz.plan[2].track === quiet && flow.queue[1] === quiet && mixz.plan.length === 4);
+    check('the move into the pick is planned afresh', mixz.plan[1].move.why !== 'test');
+    playTo(flow, decks.A, 10);
+    check('during a handover a swap is refused', mixz.swapNext(other) === false && flow.queue[0] === fit);
+    tick(400);
+    check('and the mix that runs is into the pick', decks.B.title === 'fit' && eng.starts.length === 1);
+    eng.finish();
+    mixz.takeOver('button');
+    check('while a person has the decks there is no advice', mixz._advise() === null);
+    mixz.handBack();
+    mixz.director = 'off';
+    check('with the director off there is no advice', mixz._advise() === null);
+}
+{
+    const { dj, flow } = desk();
+    dj.harmonic = new HarmonicMixer();
+    const wanted = tp('wanted', 124, 'A minor', 'House');
+    dj.requestLine = { waiting: () => [{ track: wanted, devices: ['p1', 'p2'] }] };
+    const mixz = new DjMixz(dj);
+    mixz.plan = dplan([tp('one', 124, 'A minor', 'House'), tp('next', 124, 'A minor', 'House'), tp('later', 124, 'A minor', 'House')], [0.7, 0.72, 0.72]);
+    mixz.start();
+    tick(400);
+    const alt = mixz._advise()?.alts.find((a) => a.track === wanted);
+    check('a waiting request shows up as a pick, with who asked', alt && alt.reasons.includes('requested by 2 listeners'));
+    check('approving it plays it next', mixz.swapNext(wanted) && flow.queue[0] === wanted);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

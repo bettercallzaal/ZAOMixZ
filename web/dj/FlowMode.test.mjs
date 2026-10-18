@@ -136,6 +136,31 @@ console.log('Flow Mode: the next song is refused');
     check('the next timeupdate mixes into the song after it, with no dead air', decks.B.title === 'three' && eng.starts.length === 1 && decks.A.isPlaying);
 }
 
+// ── 2b. A local song whose file will not load ─────────────────
+console.log('Flow Mode: a local song whose file will not load');
+const local = (title) => ({ id: title, title, artist: 'Test Artist', source: 'file', dataFile: `data/${title}.json` });
+const failingLoad = (deck) => { deck.loadTrack = (file) => { deck.loads.push(file); return Promise.resolve(false); }; };
+{
+    const { flow, decks } = desk();
+    failingLoad(decks.A);
+    flow.queue = [song('two')];
+    flow.start(local('broken-local'));
+    await Promise.resolve(); await Promise.resolve();
+    tick(400);
+    check('a first song whose file will not load hands over to the next one', decks.A.title === 'two' && decks.A.isPlaying);
+}
+{
+    const { flow, decks, eng } = desk();
+    failingLoad(decks.B);
+    flow.queue = [local('broken-local'), song('three')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    await Promise.resolve(); await Promise.resolve();
+    check('mid-set it is dropped at once, not after the 25 second wait', !flow.queue.some((t) => t.title === 'broken-local') && !flow._transitioning && !flow._nearEndTriggered);
+    playTo(flow, decks.A, 24); tick(400);
+    check('and the next timeupdate mixes into the song after it', decks.B.title === 'three' && eng.starts.length === 1);
+}
+
 // ── 3. The next song never loads ──────────────────────────────
 console.log('Flow Mode: the next song never loads');
 {

@@ -359,5 +359,54 @@ const { HarmonicMixer } = await import('./HarmonicMixer.js');
     check('a request line that throws does not break the advice', !threw && adv2 && adv2.planned);
 }
 
+// ── 8. Handovers reported to the stream events ────────────────
+console.log('Flow Mode: each handover is reported, however it ends');
+const watch = (flow) => { const log = []; flow.onHandover = (phase, d) => log.push(phase === 'started' ? `started:${d.type}:${d.title}` : `finished:${d.outcome}:${d.title}`); return log; };
+{
+    const { flow, decks, eng } = desk();
+    const log = watch(flow);
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('a mix: started when the engine starts', log.join() === 'started:blend:two');
+    eng.finish();
+    check('and finished, mixed, when it lands', log.join() === 'started:blend:two,finished:mixed:two');
+}
+{
+    const { flow, decks } = desk();
+    const log = watch(flow);
+    flow.queue = [song('REFUSED'), song('three')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    check('a refused song: finished, dropped, with no start', log.join() === 'finished:dropped:REFUSED');
+}
+{
+    const { flow, decks } = desk({ engine: false });
+    const log = watch(flow);
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('no engine: started as a cut, finished as a cut, once each', log.join() === 'started:cut:two,finished:cut:two');
+}
+{
+    const { flow, decks, eng } = desk();
+    const log = watch(flow);
+    flow.queue = [song('two'), song('three')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    xfader.value = 80; eng.cancel();
+    check('a cancel past halfway: finished, cancelled, and not also "mixed"', log.join() === 'started:blend:two,finished:cancelled:two');
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.onHandover = () => { throw new Error('overlay gone'); };
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    const warn = console.warn; console.warn = () => {};
+    playTo(flow, decks.A, 25); tick(400); eng.finish();
+    console.warn = warn;
+    check('a listener that throws never touches playback', flow.currentTrack.title === 'two' && decks.B.isPlaying && !flow._transitioning);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

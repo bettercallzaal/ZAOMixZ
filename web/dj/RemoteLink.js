@@ -553,6 +553,13 @@ export class RemoteHost {
         this.relay.send(snapshot(this.dj));
     }
 
+    // A stream event (docs/STREAM-EVENTS.md) for the phones and viewer links on the relay.
+    // Sealed like everything else on it, so only someone holding the link can read it.
+    sendEvent(env) {
+        if (!this.relay?.online || !this._live().length) return;
+        this.relay.send({ t: 'ev', ev: env });
+    }
+
     // ── The PHONE panel on the desktop ──
 
     _buildUI() {

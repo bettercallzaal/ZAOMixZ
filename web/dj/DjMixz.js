@@ -362,6 +362,7 @@ export class DjMixz {
         const flow = this.dj.flowMode;
         if (!flow || !move) return;
         flow.transitionType = move.type;
+        flow.transitionWhy = move.why || null;
         flow.transitionDuration = move.seconds;
         flow.transitionPointMode = 'fixed';
         // Start early enough that the move finishes a few seconds before the old track runs out.

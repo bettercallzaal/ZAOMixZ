@@ -44,6 +44,7 @@ import { Spotify } from './dj/Spotify.js';
 import { TwitchChat } from './dj/TwitchChat.js';
 import { YouTubeLive } from './dj/YouTubeLive.js';
 import { SmartRecommend } from './dj/SmartRecommend.js';
+import { StreamEvents } from './dj/StreamEvents.js';
 import { SwitchPad } from './dj/SwitchPad.js';
 import { ZaoCrate } from './dj/ZaoCrate.js';
 import { BattleCrate } from './dj/BattleCrate.js';
@@ -168,6 +169,9 @@ class DJPlayer {
         // DJ MixZ: the bot DJ. Plans a set from a playlist and a mood, then mixes it.
         this.djMixz = safeInit('DjMixz', () => new DjMixz(this));
         this.deadAir = safeInit('DeadAir', () => new DeadAir(this));
+        // Stream events: the on-air song, each handover and stream health (docs/STREAM-EVENTS.md)
+        this.streamEvents = safeInit('StreamEvents', () => new StreamEvents(this));
+        if (this.flowMode && this.streamEvents) this.flowMode.onHandover = (phase, data) => this.streamEvents.handover(phase, data);
 
         // Cloud Sync
         this.cloudSync = safeInit('CloudSync', () => new CloudSync(this.storage));

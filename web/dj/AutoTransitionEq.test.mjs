@@ -52,5 +52,18 @@ console.log('AutoTransition: the blend\'s bass swap');
     check('a later mix that is not a blend leaves the EQ alone', low('A') === 2 && low('B') === 2);
 }
 
+{
+    // The DJ turns deck B's low knob to +5 during the blend
+    const { at, router, low } = (() => {
+        const r = rig(3, -2);
+        return r;
+    })();
+    router.setEQ('B', 'low', 5);
+    at._animateBlend(1);
+    check('a low knob the DJ moves mid-blend is not overwritten by the next step', low('B') === 5);
+    at._finishTransition();
+    check('nor by the clean-up, while the deck the DJ left alone is restored', low('B') === 5 && low('A') === 3);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

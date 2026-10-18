@@ -203,6 +203,11 @@ export class FlowMode {
         if (!this.enabled) return;
         if (deck.id !== this.currentDeck) return;
         if (this._transitioning) return;
+        // Ahead of our own trigger point (DJ MixZ arms a shorter one for short moves) the
+        // deck's fixed 30s call is early: onTimeUpdate starts the handover when it is due.
+        // At the end of the track (onFinish) it always goes.
+        const remaining = deck.getDuration() - deck.getCurrentTime();
+        if (remaining > this._getTransitionTriggerTime() + 0.5) return;
 
         this._triggerTransition();
     }

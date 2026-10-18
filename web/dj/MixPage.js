@@ -8,7 +8,7 @@
 //
 // Everything above the page itself is pure and runs under node: see MixPage.test.mjs.
 
-import { cleanTitle } from './NowPlaying.js';
+import { cleanTitle, audiusPage } from './NowPlaying.js';
 import { ENDPOINT as SONGCHAINN_ENDPOINT, ANON_KEY as SONGCHAINN_KEY } from './SongChainn.js';
 import { resolveAudio } from './MusicSource.js';
 
@@ -201,7 +201,7 @@ export async function resolveTracks(mix, fetchFn = fetch, siteBase = '/') {
                 const d = (await (await fetchFn(`${host}/v1/tracks/${encodeURIComponent(t.id)}?app_name=${AUDIUS_APP}`)).json()).data;
                 if (!d) { t.title = 'An Audius track that is no longer there'; return; }
                 t.title = cleanTitle(d.title, d.user?.name); t.artist = d.user?.name || ''; t.art = d.artwork?.['150x150'] || null;
-                t.stream = `${host}/v1/tracks/${encodeURIComponent(t.id)}/stream?app_name=${AUDIUS_APP}`; t.page = d.permalink ? `https://audius.co${d.permalink}` : null;
+                t.stream = `${host}/v1/tracks/${encodeURIComponent(t.id)}/stream?app_name=${AUDIUS_APP}`; t.page = audiusPage(d.permalink);
             } catch (e) { t.title = t.title || 'Audius track (could not be read right now)'; }
         }));
     }

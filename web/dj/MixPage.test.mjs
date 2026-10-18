@@ -66,6 +66,8 @@ check('a file the app ships with plays from the site itself', tracks[2].title ==
 const own = await resolveTracks({ v: 1, t: [['lo', 'Private', 'Me', 0, 0, '']] }, fakeFetch);
 check('a file only the DJ has is listed with nothing to play', own[0].title === 'Private' && own[0].stream === null);
 check('all SongChainn songs are fetched in one request', calls.filter((u) => u.includes('songchainn_public_songs')).length === 1 && calls.some((u) => u.includes('id=in.(94e4377c-bb84-4bea-8b3f-324e1aded3e5)')));
+const hostile = await resolveTracks({ v: 1, t: [['au', 'D7KyD', 0, 0]] }, async (url) => (url.startsWith('https://api.audius.co') ? { ok: true, json: async () => ({ data: ['https://dp.example'] }) } : { ok: true, json: async () => ({ data: { title: 'T', user: { name: 'U' }, permalink: '@other.example/x' } }) }));
+check('an Audius permalink that points at another host gives no page link', hostile[0].title === 'T' && hostile[0].page === null);
 const gone = await resolveTracks({ v: 1, t: [['sc', 'deadbeefdeadbeefdeadbeefdeadbeef', 0, 0]] }, async () => ({ ok: true, json: async () => [] }));
 check('a song that is no longer public says so instead of breaking the page', gone[0].title.includes('no longer public'));
 const offline = await resolveTracks({ v: 1, t: [['sc', 'deadbeefdeadbeefdeadbeefdeadbeef', 0, 0], ['au', 'x', 0, 0]] }, async () => { throw new Error('offline'); });

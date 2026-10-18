@@ -250,6 +250,9 @@ export class DjMixz {
             else this._renderBar();
         };
 
+        // A song Flow Mode could not load comes out of the plan too, or the plan's "next" and
+        // the song actually coming in drift apart and the set never reaches its end.
+        flow.onTrackDropped = (track) => this._dropped(track);
         flow.queue = this.plan.slice(1).map((p) => p.track);
         flow.start(this.plan[0].track);
         this._armNext();
@@ -283,6 +286,18 @@ export class DjMixz {
         return true;
     }
 
+    _dropped(track) {
+        const at = this.plan.findIndex((p, i) => i >= this.index && p.track === track);
+        if (at < 0) return;
+        this.plan.splice(at, 1);
+        // The song before it now mixes straight into the one after: plan that move afresh
+        const next = this.plan[at];
+        if (next) next.move = at === 0 ? null : planTransition(this.plan[at - 1].track, next.track, this.dj.harmonic);
+        if (at === this.index + 1) this._armNext();
+        this._renderPlan();
+        this._renderBar();
+    }
+
     // Set FlowMode up for the next move: how long before the end to start, and how.
     _armNext() {
         const next = this.plan[this.index + 1];
@@ -301,7 +316,7 @@ export class DjMixz {
 
     stop() {
         const flow = this.dj.flowMode;
-        if (flow && this._orig) { flow._autoFillQueue = this._orig.fill; flow._triggerTransition = this._orig.trigger; flow.onTransitionComplete = this._orig.done; }
+        if (flow && this._orig) { flow._autoFillQueue = this._orig.fill; flow._triggerTransition = this._orig.trigger; flow.onTransitionComplete = this._orig.done; flow.onTrackDropped = null; }
         if (this.running && this.battle && (this.score.ai || this.score.human)) {
             const { ai, human } = this.score;
             this._say(ai === human ? `Contest over. It is a draw, ${ai} all.` : `Contest over. ${ai > human ? 'DJ MixZ' : 'The live DJ'} wins, ${Math.max(ai, human)} to ${Math.min(ai, human)}.`);
@@ -380,7 +395,8 @@ export class DjMixz {
         this._humanFrom = this._liveDeck();
         const flow = this.dj.flowMode;
         try { this.dj.autoTransition?.cancel?.(); } catch (e) { /* nothing running */ }
-        if (flow) { flow._transitioning = false; }
+        // Also stops a handover still waiting on its song: it must not start a mix under the person
+        flow?.cancelTransition();
         this._say(why === 'turn' ? 'Your turn. Mix in your next track; DJ MixZ takes it back after.' : why === 'touch' ? 'You grabbed a control, so the decks are yours. DJ MixZ is standing by.' : 'The decks are yours. DJ MixZ is standing by.');
         // In back to back, watch for the person finishing their mixes, then take the decks back.
         clearInterval(this._turnTimer);

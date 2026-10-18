@@ -826,6 +826,9 @@ class DJPlayer {
                     this.flowMode.onTransitionComplete(direction);
                 }
             };
+            this.autoTransition.onCancel = () => {
+                if (this.flowMode?.enabled) this.flowMode.onTransitionCancelled();
+            };
         }
     }
 

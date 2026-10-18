@@ -14,6 +14,7 @@ export class AutoTransition {
         this.duration = 8; // seconds
         this.direction = 'AtoB'; // AtoB or BtoA
         this.onComplete = null; // callback when transition finishes
+        this.onCancel = null; // callback when a transition is cancelled before it finishes
 
         // Transition type: blend, echo-out, cut, filter-sweep
         this.transitionType = 'blend';
@@ -95,6 +96,8 @@ export class AutoTransition {
         if (btn) { btn.textContent = 'AUTO'; btn.classList.remove('active'); }
         // Notify broadcast about transition cancel
         if (this.onTransitionStateChange) this.onTransitionStateChange(false, this.direction);
+        // FlowMode waits for onComplete; tell it this mix will not finish
+        if (this.onCancel) this.onCancel(this.direction);
     }
 
     _startTransition() {

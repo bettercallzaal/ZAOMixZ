@@ -2,6 +2,7 @@
 // Supports export to TXT, JSON, M3U, CSV, PNG image, clipboard, and shareable URL
 
 import { buildMix, mixUrl } from './MixPage.js';
+import { esc } from './Html.js';
 
 export class Setlist {
     constructor(library, loadTrackCallback) {
@@ -630,15 +631,15 @@ export class Setlist {
         let trackRows = '';
         tracks.forEach((t, i) => {
             const meta = [];
-            if (t.b) meta.push(`${t.b} BPM`);
-            if (t.k) meta.push(t.k);
+            if (t.b) meta.push(`${esc(t.b)} BPM`);
+            if (t.k) meta.push(esc(t.k));
             const metaStr = meta.length > 0 ? `<span class="share-track-meta">${meta.join(' / ')}</span>` : '';
-            const artist = t.a ? ` — ${t.a}` : '';
+            const artist = t.a ? ` — ${esc(t.a)}` : '';
             trackRows += `
                 <div class="share-track-row">
                     <span class="share-track-num">${String(i + 1).padStart(2, '0')}</span>
-                    <span class="share-track-time">${t.ts || ''}</span>
-                    <span class="share-track-name">${t.n}${artist}</span>
+                    <span class="share-track-time">${esc(t.ts)}</span>
+                    <span class="share-track-name">${esc(t.n)}${artist}</span>
                     ${metaStr}
                 </div>
             `;
@@ -647,10 +648,10 @@ export class Setlist {
         let statsHtml = '';
         if (stats.tc) {
             const statChips = [];
-            statChips.push(`${stats.tc} tracks`);
-            if (stats.td) statChips.push(this._formatDuration(stats.td));
-            if (stats.br) statChips.push(`${stats.br} BPM`);
-            if (stats.mk) statChips.push(`Key: ${stats.mk}`);
+            statChips.push(`${esc(stats.tc)} tracks`);
+            if (stats.td) statChips.push(esc(this._formatDuration(stats.td)));
+            if (stats.br) statChips.push(`${esc(stats.br)} BPM`);
+            if (stats.mk) statChips.push(`Key: ${esc(stats.mk)}`);
             statsHtml = `<div class="share-stats">${statChips.map(c => `<span class="share-stat-chip">${c}</span>`).join('')}</div>`;
         }
 
@@ -659,7 +660,7 @@ export class Setlist {
                 <div class="share-header">
                     <div class="share-brand">AURDOUR <span class="share-brand-accent">DJ</span></div>
                     <h1 class="share-title">DJ SET</h1>
-                    <div class="share-date">${data.d || ''}</div>
+                    <div class="share-date">${esc(data.d)}</div>
                     ${statsHtml}
                 </div>
                 <div class="share-tracklist">${trackRows}</div>
@@ -837,9 +838,9 @@ export class Setlist {
             if (entry.deck) metaParts.push(`Deck ${entry.deck}`);
 
             item.innerHTML = `
-                <span class="history-time">${time}</span>
-                <span class="history-title">${entry.title}${entry.artist ? ' — ' + entry.artist : ''}</span>
-                ${metaParts.length > 0 ? `<span class="history-meta">${metaParts.join(' / ')}</span>` : ''}
+                <span class="history-time">${esc(time)}</span>
+                <span class="history-title">${esc(entry.title)}${entry.artist ? ' — ' + esc(entry.artist) : ''}</span>
+                ${metaParts.length > 0 ? `<span class="history-meta">${esc(metaParts.join(' / '))}</span>` : ''}
             `;
             list.appendChild(item);
         });
@@ -859,10 +860,10 @@ export class Setlist {
         chips.push(`<span class="stat-chip">${stats.totalTracks} track${stats.totalTracks !== 1 ? 's' : ''}</span>`);
         chips.push(`<span class="stat-chip">${this._formatDuration(stats.totalDuration)}</span>`);
         if (stats.bpmRange) {
-            chips.push(`<span class="stat-chip stat-chip-bpm">${stats.bpmRange.min}-${stats.bpmRange.max} BPM</span>`);
+            chips.push(`<span class="stat-chip stat-chip-bpm">${esc(stats.bpmRange.min)}-${esc(stats.bpmRange.max)} BPM</span>`);
         }
         if (stats.mostUsedKey) {
-            chips.push(`<span class="stat-chip stat-chip-key">Key: ${stats.mostUsedKey}</span>`);
+            chips.push(`<span class="stat-chip stat-chip-key">Key: ${esc(stats.mostUsedKey)}</span>`);
         }
         if (stats.avgTrackLength > 0) {
             chips.push(`<span class="stat-chip">Avg: ${this._formatDuration(stats.avgTrackLength)}</span>`);

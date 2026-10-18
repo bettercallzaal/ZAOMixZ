@@ -3,6 +3,7 @@
 // Supports both local tracks (dataFile) and streaming tracks (streamUrl)
 
 import { canPlay } from './Licence.js';
+import { esc } from './Html.js';
 
 export class FlowMode {
     constructor(djPlayer) {
@@ -781,18 +782,18 @@ export class FlowMode {
         const track = this.queue[0];
         const badges = this._getCompatibilityBadges(track);
         const badgeHtml = badges.map(b =>
-            `<span class="flow-badge flow-badge-${b.type}">${b.label}</span>`
+            `<span class="flow-badge flow-badge-${b.type}">${esc(b.label)}</span>`
         ).join('');
 
         container.innerHTML = `
             <div class="flow-next-card">
                 <div class="flow-next-info">
-                    <div class="flow-next-title">${track.title || 'Unknown'}</div>
-                    <div class="flow-next-artist">${track.artist || ''}</div>
+                    <div class="flow-next-title">${esc(track.title || 'Unknown')}</div>
+                    <div class="flow-next-artist">${esc(track.artist)}</div>
                 </div>
                 <div class="flow-next-meta">
-                    <span>${track.bpm ? track.bpm + ' BPM' : ''}</span>
-                    <span>${track.key || ''}</span>
+                    <span>${track.bpm ? esc(track.bpm) + ' BPM' : ''}</span>
+                    <span>${esc(track.key)}</span>
                 </div>
                 <div class="flow-next-badges">${badgeHtml}</div>
             </div>
@@ -814,7 +815,7 @@ export class FlowMode {
             return `
                 <div class="flow-queue-item">
                     <span class="flow-queue-num">${actualIndex + 1}</span>
-                    <span class="flow-queue-info">${track.title || 'Unknown'} — ${track.artist || ''}</span>
+                    <span class="flow-queue-info">${esc(track.title || 'Unknown')} — ${esc(track.artist)}</span>
                     <button class="flow-queue-remove" data-index="${actualIndex}">x</button>
                 </div>
             `;
@@ -853,18 +854,18 @@ export class FlowMode {
         container.innerHTML = items.map((track, i) => {
             const badges = this._getCompatibilityBadges(track);
             const badgeHtml = badges.map(b =>
-                `<span class="flow-badge flow-badge-${b.type}">${b.label}</span>`
+                `<span class="flow-badge flow-badge-${b.type}">${esc(b.label)}</span>`
             ).join('');
 
             return `
                 <div class="flow-suggestion-card" data-index="${i}">
                     <div class="flow-sug-info">
-                        <div class="flow-sug-title">${track.title || 'Unknown'}</div>
-                        <div class="flow-sug-artist">${track.artist || ''}</div>
+                        <div class="flow-sug-title">${esc(track.title || 'Unknown')}</div>
+                        <div class="flow-sug-artist">${esc(track.artist)}</div>
                     </div>
                     <div class="flow-sug-meta">
-                        <span>${track.bpm ? track.bpm + ' BPM' : ''}</span>
-                        <span>${track.key || ''}</span>
+                        <span>${track.bpm ? esc(track.bpm) + ' BPM' : ''}</span>
+                        <span>${esc(track.key)}</span>
                         ${badgeHtml}
                     </div>
                     <button class="flow-sug-add" data-index="${i}">

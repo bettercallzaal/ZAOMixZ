@@ -5,6 +5,7 @@
 // Quick battles run some nights, not all, so the tab opens on the latest battle night and a
 // picker beside it reaches the earlier ones.
 
+import { esc } from './Html.js';
 const API = 'https://wavewarz.info/api/public/battles?type=quick&limit=100';
 const REFRESH_MS = 30 * 60 * 1000;
 
@@ -137,7 +138,7 @@ export class BattleCrate {
         if (!pick) return;
         const list = nights(this.battles).slice(0, 14);
         const fmt = (d) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        pick.innerHTML = list.map((d, i) => `<option value="${i === 0 ? '' : d}">${i === 0 ? 'Latest: ' : ''}${fmt(d)}</option>`).join('');
+        pick.innerHTML = list.map((d, i) => `<option value="${i === 0 ? '' : esc(d)}">${i === 0 ? 'Latest: ' : ''}${esc(fmt(d))}</option>`).join('');
         pick.value = this.night;
     }
 

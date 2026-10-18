@@ -3,6 +3,7 @@
 // Supports format selection: webm, ogg, mp4
 // Enhanced: track list/cue sheet, recording waveform, split recording
 
+import { esc } from './Html.js';
 export class Recorder {
     constructor(audioRouter) {
         this.router = audioRouter;
@@ -275,8 +276,8 @@ export class Recorder {
             row.className = 'rec-cue-entry';
             row.innerHTML = `
                 <span class="rec-cue-time">${timeStr}</span>
-                <span class="rec-cue-deck">${entry.deckId}</span>
-                <span class="rec-cue-track">${entry.trackName}</span>
+                <span class="rec-cue-deck">${esc(entry.deckId)}</span>
+                <span class="rec-cue-track">${esc(entry.trackName)}</span>
             `;
             listEl.appendChild(row);
         });

@@ -1,6 +1,7 @@
 // PluginManager.js — Plugin architecture for community extensions
 // Plugins can add effects, visualizers, panels, and analyzers
 
+import { esc } from './Html.js';
 export class PluginManager {
     constructor(djPlayer) {
         this.dj = djPlayer;
@@ -238,7 +239,7 @@ export class PluginManager {
                 const el = document.getElementById('plugin-translog-content');
                 if (!el) return;
                 el.innerHTML = this._log.map(e =>
-                    `<div class="translog-entry"><span class="translog-time">${e.time}</span> <span class="translog-deck">[${e.deck}]</span> ${e.title} — ${e.artist}</div>`
+                    `<div class="translog-entry"><span class="translog-time">${e.time}</span> <span class="translog-deck">[${esc(e.deck)}]</span> ${esc(e.title)} — ${esc(e.artist)}</div>`
                 ).join('');
                 el.scrollTop = el.scrollHeight;
             },
@@ -307,9 +308,9 @@ export class PluginManager {
             item.className = 'plugin-item';
             item.innerHTML = `
                 <div class="plugin-info">
-                    <span class="plugin-name">${name}</span>
-                    <span class="plugin-version">v${plugin.version || '?'}</span>
-                    <span class="plugin-type">${plugin.type || ''}</span>
+                    <span class="plugin-name">${esc(name)}</span>
+                    <span class="plugin-version">v${esc(plugin.version || '?')}</span>
+                    <span class="plugin-type">${esc(plugin.type)}</span>
                 </div>
                 <span class="plugin-status ${plugin._enabled ? 'on' : 'off'}">${plugin._enabled ? 'ON' : 'OFF'}</span>
             `;

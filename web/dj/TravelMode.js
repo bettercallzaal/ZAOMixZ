@@ -2,6 +2,7 @@
 // Screen wake lock, orientation lock, battery saver, crossfader gestures,
 // pinch-to-zoom waveform, offline audio caching UI
 
+import { esc } from './Html.js';
 export class TravelMode {
     constructor(djPlayer) {
         this.dj = djPlayer;
@@ -391,13 +392,13 @@ export class TravelMode {
         }
 
         container.innerHTML = tracks.map(t => `
-            <div class="travel-offline-item" data-id="${t.id}">
+            <div class="travel-offline-item" data-id="${esc(t.id)}">
                 <div class="travel-offline-info">
-                    <span class="travel-offline-title">${t.title}</span>
-                    <span class="travel-offline-artist">${t.artist}</span>
+                    <span class="travel-offline-title">${esc(t.title)}</span>
+                    <span class="travel-offline-artist">${esc(t.artist)}</span>
                 </div>
                 <span class="travel-offline-size">${(t.size / 1024 / 1024).toFixed(1)} MB</span>
-                <button class="btn-mini travel-offline-remove" data-id="${t.id}" title="Remove from offline">X</button>
+                <button class="btn-mini travel-offline-remove" data-id="${esc(t.id)}" title="Remove from offline">X</button>
             </div>
         `).join('');
 

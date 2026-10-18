@@ -1,6 +1,7 @@
 // SmartRecommend.js — AI-powered track recommendation engine
 // Scores tracks by BPM proximity, key compatibility, genre, and energy flow
 
+import { esc } from './Html.js';
 export class SmartRecommend {
     constructor(harmonicMixer) {
         this.harmonic = harmonicMixer;
@@ -149,15 +150,15 @@ export class SmartRecommend {
 
             item.innerHTML = `
                 <div class="suggest-info">
-                    <div class="suggest-title">${track.title || 'Unknown'}</div>
-                    <div class="suggest-artist">${track.artist || ''}</div>
+                    <div class="suggest-title">${esc(track.title || 'Unknown')}</div>
+                    <div class="suggest-artist">${esc(track.artist)}</div>
                 </div>
                 <div class="suggest-meta">
-                    <span class="suggest-bpm">${track.bpm || '-'}</span>
-                    <span class="suggest-key">${track.key || '-'}</span>
+                    <span class="suggest-bpm">${esc(track.bpm || '-')}</span>
+                    <span class="suggest-key">${esc(track.key || '-')}</span>
                     <span class="suggest-badge suggest-badge-${matchLevel}">${badge}</span>
                 </div>
-                <div class="suggest-reasons">${reasons.join(' + ')}</div>
+                <div class="suggest-reasons">${esc(reasons.join(' + '))}</div>
                 <div class="suggest-actions">
                     <button class="btn-load btn-load-a suggest-load" data-deck="A">A</button>
                     <button class="btn-load btn-load-b suggest-load" data-deck="B">B</button>

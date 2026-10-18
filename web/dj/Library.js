@@ -2,6 +2,7 @@
 // context menus, bulk actions, and enhanced search
 
 import { loadSourceManifest } from './MusicSource.js';
+import { esc } from './Html.js';
 
 export class Library {
     constructor(onLoadTrack) {
@@ -1464,7 +1465,7 @@ export class Library {
         if (allPlaylists.length > 0) {
             html += '<div style="max-height:200px;overflow-y:auto;margin:8px 0">';
             allPlaylists.forEach(pl => {
-                html += `<div class="lib-pl-dropdown-item" data-plid="${pl.id}">${pl.name} (${pl.tracks.length})</div>`;
+                html += `<div class="lib-pl-dropdown-item" data-plid="${esc(pl.id)}">${esc(pl.name)} (${pl.tracks.length})</div>`;
             });
             html += '</div>';
         }
@@ -1536,7 +1537,7 @@ export class Library {
         td.style.textAlign = 'center';
         td.style.color = '#8888aa';
         td.style.padding = '20px';
-        td.innerHTML = `<span class="audius-loading-spinner"></span> ${msg}`;
+        td.innerHTML = `<span class="audius-loading-spinner"></span> ${esc(msg)}`;
         row.appendChild(td);
         this.tableBody.appendChild(row);
     }

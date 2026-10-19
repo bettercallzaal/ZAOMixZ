@@ -17,6 +17,8 @@ import { cleanTitle, liveDeck, songPage } from './NowPlaying.js';
 export const EVENT_VERSION = 1;
 export const OUT_TYPES = ['track.changed', 'transition.started', 'transition.finished', 'stream.health', 'request.updated', 'chat.message', 'director.advice'];
 export const HEALTH_EVERY_MS = 5000;
+// Said once and true until replaced, so sent again at GO LIVE (it may have been said off air)
+export const REPLAY = ['director.advice'];
 
 export function envelope(type, data, seq, at = Date.now()) {
     return { v: EVENT_VERSION, type, at, seq, data };
@@ -34,6 +36,23 @@ export function trackData(deck) {
         source: meta.source || meta._source || 'local',
         licence: l ? { holder: String(l.holder || l.artist || ''), radio: !!l.uses?.radio } : null,
         link: songPage(meta),
+    };
+}
+
+// request.updated data: what the request board already shows, never the phone's device id.
+export function requestData(r) {
+    return {
+        rid: r.rid, title: String(r.title || '').slice(0, 120), artist: String(r.artist || '').slice(0, 80),
+        name: String(r.name || '').slice(0, 24), also: (r.also || []).length, status: r.status,
+    };
+}
+
+// director.advice data: the Flow Director's word on the slot coming up (FlowDirector.js).
+export function adviceData(adv) {
+    if (!adv) return { next: null, alts: [] };
+    return {
+        next: { title: adv.planned.track.title || '', why: adv.why },
+        alts: adv.alts.map((a) => ({ title: a.track.title || '', why: a.reasons.join(', '), better: !!a.better })),
     };
 }
 
@@ -62,12 +81,14 @@ export class StreamEvents {
         this._playing = {};      // play state last sent, by deck
         this._health = null;
         this._healthAt = 0;
+        this._latest = {};       // the last word of each kind that stays true until replaced (REPLAY)
         if (every && typeof setInterval !== 'undefined') setInterval(() => this.tick(), every);
     }
 
     emit(type, data) {
         const b = this.dj.broadcast;
         if (!b || !OUT_TYPES.includes(type)) return null;
+        if (REPLAY.includes(type)) this._latest[type] = data;
         const env = envelope(type, data, ++this.seq, this.now());
         b._broadcast(env);                                  // same browser (overlays), only ON AIR
         if (b.isLive) this.dj.remote?.sendEvent?.(env);     // off the machine, over the phone relay
@@ -84,7 +105,11 @@ export class StreamEvents {
         if (!b) return;
         const decks = dj.decks || {};
         // Nothing goes out while off air, so on GO LIVE say everything again
-        if (b.isLive && !this._wasLive) { this._live = null; this._playing = {}; this._health = null; }
+        if (b.isLive && !this._wasLive) {
+            this._live = null; this._playing = {}; this._health = null;
+            this._wasLive = true;
+            for (const type of REPLAY) if (this._latest[type]) this.emit(type, this._latest[type]);
+        }
         this._wasLive = !!b.isLive;
         // Play state for the overlays' deck cards
         for (const id of ['A', 'B']) {

@@ -15,6 +15,7 @@
 import { cleanTitle, liveDeck } from './NowPlaying.js';
 import { MOODS, tracksFrom } from './DjMixz.js';
 import { RequestQueue, cleanRequest, forCaller, canTape, autoPick } from './RequestLine.js';
+import { requestData } from './StreamEvents.js';
 import { canPlay } from './Licence.js';
 
 export const STATE_HZ = 5;
@@ -442,12 +443,19 @@ export class RemoteHost {
         const res = this.requests.add(phone.device, cmd, track);
         if (!res.ok) { say(res.reason); return; }
         if (!res.joined) res.request.tape = canTape(play.licence) || !play.licence;   // no licence = the DJ's own file
+        this._announce(res.request);   // a new request, or one more caller on it
         say(res.joined ? 'Someone asked for that one too. You are on it with them.' : 'Got it. Your request is on the board.');
         this._renderRequests();
     }
 
+    // Tell the callers on this request, and the stream (request.updated, docs/STREAM-EVENTS.md).
     _tell(r) {
+        this._announce(r);
         for (const device of r.devices) this.relay?.send({ t: 'req', to: device, list: forCaller(this.requests, device) });
+    }
+
+    _announce(r) {
+        try { this.dj.streamEvents?.emit?.('request.updated', requestData(r)); } catch (e) { /* the stream is optional */ }
     }
 
     // Once a second: is a requested song on now, or over? With AUTO-PLAY REQUESTS on, DJ MixZ

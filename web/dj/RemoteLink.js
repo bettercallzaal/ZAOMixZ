@@ -73,7 +73,7 @@ export function cleanCommand(raw) {
             return { a: 'stream', src: TRACK_SOURCES.includes(raw.src) && raw.src !== 'view' ? raw.src : (raw.src === 'view' ? 'view' : 'songchainn'), mood: MOOD_IDS.includes(raw.mood) ? raw.mood : 'journey', minutes: SET_MINUTES.includes(raw.minutes) ? raw.minutes : 60, endless: !!raw.endless };
         case 'skip': case 'share':
             return { a: raw.a };
-        case 'endless': case 'live': case 'deadair':
+        case 'endless': case 'live': case 'deadair': case 'agentsmute':
             return { a: raw.a, on: !!raw.on };
         case 'mixz':
             return { a: 'mixz', on: !!raw.on };
@@ -126,6 +126,7 @@ export function snapshot(dj) {
         live_deck: liveDeck(dj.decks, dj.audioRouter?._lastCrossfadePosition ?? 0.5),
         live: !!dj.broadcast?.isLive, liveSince: dj.broadcast?.liveSince || 0,
         deadair: !!dj.deadAir?.on,
+        agents: dj.agents ? { n: dj.agents.connectedCount?.() || 0, muted: !!dj.agents.muted } : null,
         mixz: {
             running: !!m.running, human: !!m.human, endless: !!m.endless, mood: m.mood || 'journey',
             index: m.index || 0, total: m.plan?.length || 0, minutes: m.minutes || 0, source: m._lastBuild?.sourceId || '',
@@ -178,6 +179,7 @@ export function applyCommand(dj, cmd, host = null) {
         case 'endless': if (mixz) mixz.endless = cmd.on; return 'endless';
         case 'live': { const b = document.getElementById('live-toggle'); if (b && !!dj.broadcast?.isLive !== cmd.on) b.click(); return 'live'; }
         case 'deadair': dj.deadAir?.set?.(cmd.on); return 'deadair';
+        case 'agentsmute': dj.agents?.setMuted?.(cmd.on); dj.agents?.renderMute?.(); return 'agentsmute';
         default: return 'ignored';
     }
 }

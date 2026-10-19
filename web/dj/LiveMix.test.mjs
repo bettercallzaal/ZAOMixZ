@@ -17,7 +17,7 @@ const keys = await newKeys();
 check('the key is 43 characters, safe in a link', validKey(keys.pub) && keys.jwk.d);
 check('the link is mix.html#live=<key>', liveUrl('https://zaomixz.vercel.app/', keys.pub) === `https://zaomixz.vercel.app/mix.html#live=${keys.pub}`);
 const m = encodeMix(liveMix([song('a1', t0, 200)], [], t0));
-check('a live link with the set written in reads both', JSON.stringify(parseMixHash(`#live=${keys.pub}&m=${m}`)) === JSON.stringify({ live: keys.pub, m }));
+check('a live link with the set written in reads both', JSON.stringify(parseMixHash(`#live=${keys.pub}&m=${m}`)) === JSON.stringify({ live: keys.pub, m, lobby: '' }));
 check('an old #m= link still reads', parseMixHash(`#m=${m}`).m === m && parseMixHash(`#m=${m}`).live === '');
 check('a key that is not one is ignored', parseMixHash('#live=abc').live === '' && parseMixHash('#live=' + 'x'.repeat(42) + '!').live === '');
 const topic = await liveTopic(keys.pub);

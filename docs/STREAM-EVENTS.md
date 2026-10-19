@@ -68,3 +68,52 @@ The desk drops anything else, the same way `cleanCommand` drops unknown phone co
 2. **The on-air title, off the machine.** Send `track.changed` for the song the room hears (from the live deck, not the load), plus `transition.started` and `.finished` and `stream.health`. Send them over the relay too, so an overlay in OBS can follow as a viewer link instead of relying on BroadcastChannel.
 3. `request.updated`, `director.advice`, and chat: Twitch and YouTube chat requests go into the request line, through a simple moderation filter, and `chat.message` carries only the lines the filter passed.
 4. `agent.recommendation` into the Flow Director, with the rate limit.
+
+## Phase 5. Agent gateway (proposal)
+
+Status: **design only**. Nothing here is built, and there is **no live endpoint for outside agents**. Opening one needs Zaal's explicit yes, given after the requirements below are built and tested.
+
+The idea, from a partner proposal on 18 October 2026: one gateway for every place a show runs, instead of one agent per platform. The desk is the primary client. Twitch, and later other platforms, are distribution.
+
+```
+Twitch chat, ZAO MixZ desk, battle platforms (adapters)
+        -> one event bus (the v1 envelope above)
+        -> agent participation layer (identity, permissions, moderation, receipts)
+        -> agents (commentary, next-track ideas, audience questions)
+        -> the host approves what is published, and where
+```
+
+### Layers
+
+1. **Adapters.** Each platform's adapter turns what happens there into the v1 envelope, adding `platform` (for example `desk`, `twitch`) to `data`. A track change on the desk is one `track.changed`, whatever platform is watching. Adapters only read. None of them writes to a platform without the host approving the message.
+2. **Event bus.** The bus is this contract. It is read-only for agents: they receive the events and nothing else.
+3. **Agent participation layer.**
+   - **Identity.** Each agent connects with its own viewer link, as a phone does today. The desk stamps the agent's name and role from that connection, never from the agent's own messages, as with `from: 'chat'`.
+   - **Permissions** are per agent, and off unless the host turns them on. Reading events is the only default. Proposing is a permission the host grants per kind: next track, comment, audience question.
+   - **Moderation.** Every proposal goes through the chat filter (`web/dj/ChatFilter.js`) and a rate limit per agent.
+   - **Receipts.** Every proposal and every host decision (approved, edited, declined, expired) is logged with the agent, the time and the outcome, so a show can be replayed and audited.
+4. **Agents propose; the host publishes.** No agent output reaches the stream, chat or the decks by itself. A next-track proposal arrives as a Flow Director pick (`agent.recommendation`). A comment or a question arrives as a draft in the host's queue. The host picks where an approved item goes.
+5. **Audience intelligence.** Requests, votes and engagement from every platform are gathered into one show state.
+   - Identities stay distinct per platform (`twitch:name` is not `desk:name`).
+   - One vote per identity per round.
+   - Agents cannot vote, and an automated or duplicate vote is dropped.
+   - The request line's limits and the chat cap apply across every platform.
+
+### Required before any outside agent connects
+
+These are gates, not features to add later. All of them must exist and be tested first:
+
+- **MUTE ALL AGENTS.** One control on the desk, always visible while any agent is connected. Pressing it drops every pending agent proposal, refuses new ones and stops sending events to agents, until the host unmutes.
+- **AI versus human labels.** Every agent proposal on the desk is marked as coming from an agent, with that agent's name. Anything published from one stays labelled where the audience sees it, for example "AI suggestion, approved by the host".
+- **The approval queue and receipts above.** Nothing publishes without a person's tap, and every decision is logged.
+- **Per-agent permissions, off unless granted,** with a way to disconnect a single agent.
+
+### Out of scope until verified separately
+- Voice or avatar co-hosts, and any audio from an agent on the stream.
+- X Spaces. It needs its own verified integration.
+- Payments of any kind. A payment rail is not a connection endpoint, and none is needed.
+- Writing to a battle platform. Reading its public data through an adapter needs its API checked first.
+
+### Open questions for the host
+- Which agents, if any, and with which permissions each.
+- Whether battle-night votes should ever count desk and Twitch audiences together, or always stay apart.

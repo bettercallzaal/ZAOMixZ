@@ -57,7 +57,10 @@ export function lobbyHtml(held = null, origin = '') {
         + `<small id="dj-lobby-status" class="dj-setting-default"></small></span></div>`
         + `<div class="dj-setting dj-setting-newmix"><span class="dj-setting-text"><b>New mix link</b>`
         + `<small>SHARE THE MIX keeps one link for a whole set, and starts a new one after six quiet hours. Start a new one now, for a second set the same day. The old link keeps the set it had.</small>`
-        + `<span class="dj-lobby-row"><button type="button" id="dj-newmix">START A NEW MIX LINK</button></span></span></div>`;
+        + (held
+            ? `<small class="dj-setting-default">Let go of the lobby first: a new link while hosting would lose the lobby for 30 minutes.</small>`
+            : `<span class="dj-lobby-row"><button type="button" id="dj-newmix">START A NEW MIX LINK</button></span>`)
+        + `</span></div>`;
 }
 
 // What the claim said, for the status line under the box.
@@ -124,9 +127,9 @@ export class Settings {
                     this.dj.setlist?.releaseLobby?.();
                     this.renderDjSettings();
                 } else if (id === 'dj-newmix') {
-                    this.dj.setlist?.newMixLink?.();
+                    const ok = this.dj.setlist?.newMixLink?.();
                     this.renderDjSettings();
-                    if (status()) status().textContent = 'A new mix link starts with the next SHARE THE MIX.';
+                    if (status()) status().textContent = ok === false ? 'Let go of the lobby first.' : 'A new mix link starts with the next SHARE THE MIX.';
                 } else if (id === 'dj-lobby-copy') {
                     const held = this.dj.setlist?.lobbyHeld?.();
                     if (held) navigator.clipboard?.writeText(`${window.location.origin}/mix.html#lobby=${held.room}`);

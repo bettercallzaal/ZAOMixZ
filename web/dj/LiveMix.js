@@ -254,8 +254,10 @@ export class LiveMixHost {
     }
 
     // A new mix link now, instead of waiting for six quiet hours. The old link keeps the set it
-    // had; nothing more is sent to it.
+    // had; nothing more is sent to it. Refused (false) while this desk holds a lobby: the lobby's
+    // claim is signed with this key, and a new key could not reclaim it for 30 minutes.
     newSet() {
+        if (this.room) return false;
         if (this._beat) clearInterval(this._beat);
         this._beat = null;
         this.room = null;
@@ -266,6 +268,7 @@ export class LiveMixHost {
         for (const c of this.clients) { try { c.end?.(true); } catch (e) { /* gone */ } }
         this.clients = [];
         try { this.storage?.removeItem?.(STORE_KEY); } catch (e) { /* no storage */ }
+        return true;
     }
 
     // ── Lobbies ──

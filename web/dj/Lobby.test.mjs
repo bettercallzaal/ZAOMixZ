@@ -135,6 +135,7 @@ check('the box asks for a name when no lobby is held', lobbyHtml(null).includes(
 const box = lobbyHtml({ room: 'main', name: '<img src=x onerror=1>' }, 'https://z');
 check('when held it shows the link and LET IT GO, the name escaped', box.includes('https://z/mix.html#lobby=main') && box.includes('id="dj-lobby-release"') && !box.includes('<img') && box.includes('&lt;img'));
 check('the desk offers a new mix link', lobbyHtml(null).includes('id="dj-newmix"'));
+check('but not while it holds a lobby, and says why', !lobbyHtml({ room: 'main', name: 'Main' }).includes('id="dj-newmix"') && lobbyHtml({ room: 'main', name: 'Main' }).includes('Let go of the lobby first'));
 check('offline says why it will not claim', lobbyStatus({ ok: false, why: 'offline' }).includes('not safe to claim'));
 check('a taken lobby says how long ago its host played', lobbyStatus({ ok: false, why: 'taken', minutes: 1, name: 'Main' }).includes('1 minute ago') && lobbyStatus({ ok: false, why: 'taken', minutes: 7, name: 'Main' }).includes('7 minutes ago'));
 

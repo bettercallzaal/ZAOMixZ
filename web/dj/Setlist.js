@@ -564,7 +564,13 @@ export class Setlist {
     }
     releaseLobby() { this.live?.releaseRoom(); }
     // Start a fresh live mix link (Settings), instead of waiting for six quiet hours
-    newMixLink() { this.live?.newSet(); this.live = null; try { localStorage.removeItem('mixz-live-mix'); } catch (e) { /* no storage */ } }
+    // Refused (false) while a lobby is held: let it go first.
+    newMixLink() {
+        if (this.live && !this.live.newSet()) return false;
+        this.live = null;
+        try { localStorage.removeItem('mixz-live-mix'); } catch (e) { /* no storage */ }
+        return true;
+    }
     lobbyHeld() { const r = this.live?.room; return r && !r.checking ? { room: r.room, name: r.name } : null; }
 
     async liveLink() {

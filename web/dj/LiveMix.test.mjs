@@ -92,6 +92,10 @@ console.log('LiveMix: a new mix link on demand');
     const second = await host.link('https://x');
     check('the next share gets a new link, even inside six hours', second !== first && second.includes('#live='));
     check('and does not carry the old songs over', JSON.parse(store.getItem(STORE_KEY)).t.length === 1);
+    // While hosting a lobby: refused, the key and the lobby stay as they are
+    host.room = { room: 'main', name: 'Main', topic: 'zaomixz/lobby/x' };
+    const key = host.lobby.pub;
+    check('refused while this desk holds a lobby, keeping its key and the lobby', host.newSet() === false && host.lobby?.pub === key && host.room?.room === 'main' && store.getItem(STORE_KEY) !== null);
 }
 
 console.log('LiveMix: a relay that will not connect');

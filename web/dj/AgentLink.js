@@ -21,13 +21,15 @@
 
 import { newToken, validToken, Relay } from './RemoteLink.js';
 import { OUT_TYPES } from './StreamEvents.js';
+import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
 export const MAX_AGENTS = 8;
 export const MUTED_KEY = 'mixz-agents-muted';
-// What an agent may send in gate 1. Anything else is dropped.
-export const AGENT_IN = new Set(['hello', 'ping']);
+// What an agent may send. Anything else is dropped. 'propose' (gate 3) is a draft for the
+// DJ's approval queue (AgentQueue.js), and only of a kind the DJ granted that agent.
+export const AGENT_IN = new Set(['hello', 'ping', 'propose']);
 
 // A name the desk shows: letters, digits, spaces and - _ . only, 1 to 24 characters.
 export function agentName(raw) {
@@ -43,14 +45,18 @@ export const tokenFromKey = (key) => {
 };
 
 export function newAgent(name, { token = newToken(), id = newToken().slice(0, 12), now = Date.now() } = {}) {
-    return { id, name: agentName(name), token, created: now };
+    return { id, name: agentName(name), token, created: now, perms: {} };
 }
+
+// Only known kinds, true or false. Anything else in a saved list is dropped.
+export const cleanPerms = (p) => Object.fromEntries(PROPOSAL_KINDS.filter((k) => p && p[k] === true).map((k) => [k, true]));
 
 // A message from an agent, cleaned: only the kinds it may send, with nothing it says about
 // who it is. Null drops it.
 export function cleanAgentMessage(raw) {
     if (!raw || typeof raw !== 'object' || !AGENT_IN.has(raw.t)) return null;
     if (raw.t === 'ping') return { t: 'ping', n: Number.isInteger(raw.n) ? raw.n : 0 };
+    if (raw.t === 'propose') return { t: 'propose', kind: typeof raw.kind === 'string' ? raw.kind : '', text: typeof raw.text === 'string' ? raw.text : '' };
     return { t: 'hello' };
 }
 
@@ -72,9 +78,11 @@ export class AgentHost {
         Object.assign(this, { RelayClass, storage, onChange });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
-        this.pending = [];        // agent proposals waiting for the DJ (the approval queue, gate 3)
+        this.queue = new ApprovalQueue({ storage });   // drafts waiting for the DJ, and the receipts
         try { this.muted = this.storage?.getItem(MUTED_KEY) === 'on'; } catch (e) { this.muted = false; }
     }
+
+    get pending() { return this.queue.pending; }
 
     connectedCount(now = Date.now()) { return this.agents.filter((a) => this.connected(a.id, now)).length; }
 
@@ -82,7 +90,7 @@ export class AgentHost {
     setMuted(on) {
         this.muted = !!on;
         try { this.storage?.setItem(MUTED_KEY, this.muted ? 'on' : 'off'); } catch (e) { /* no storage */ }
-        if (this.muted) this.pending = [];
+        if (this.muted) this.queue.dropAll('muted');
         for (const l of this.links.values()) l.relay.send({ t: 'muted', on: this.muted });
         this.onChange?.();
     }
@@ -90,21 +98,31 @@ export class AgentHost {
     // Where a proposal enters (gate 3 builds on this). Null while muted: refused.
     accept(item) {
         if (this.muted) return null;
-        this.pending.push(item);
+        this.queue.pending.push(item);
         return item;
     }
 
     _load() {
         try {
             const list = JSON.parse(this.storage?.getItem(AGENTS_KEY) || '[]');
-            return Array.isArray(list) ? list.filter((a) => a && validToken(a.token) && typeof a.id === 'string').map((a) => ({ ...a, name: agentName(a.name) })) : [];
+            return Array.isArray(list) ? list.filter((a) => a && validToken(a.token) && typeof a.id === 'string').map((a) => ({ ...a, name: agentName(a.name), perms: cleanPerms(a.perms) })) : [];
         } catch (e) {
             return [];
         }
     }
     _save() { try { this.storage?.setItem(AGENTS_KEY, JSON.stringify(this.agents)); } catch (e) { /* no storage */ } }
 
-    list() { return this.agents.map(({ id, name, created }) => ({ id, name, created, connected: this.connected(id) })); }
+    list() { return this.agents.map(({ id, name, created, perms }) => ({ id, name, created, perms: { ...perms }, connected: this.connected(id) })); }
+
+    // Lets one agent propose one kind of draft, or stops it. Every kind starts off.
+    grant(id, kind, on) {
+        const a = this.agents.find((x) => x.id === id);
+        if (!a || !PROPOSAL_KINDS.includes(kind)) return false;
+        a.perms = { ...a.perms, [kind]: !!on };
+        this._save();
+        this.onChange?.();
+        return true;
+    }
     connected(id, now = Date.now()) { const l = this.links.get(id); return !!l && now - l.seen < 15000; }
 
     // A new agent and the key to hand it. Null when the desk already has the most it takes.
@@ -120,6 +138,7 @@ export class AgentHost {
     remove(id) {
         this.links.get(id)?.relay.close();
         this.links.delete(id);
+        this.queue.dropAll('agent removed', id);
         this.agents = this.agents.filter((a) => a.id !== id);
         this._save();
         this.onChange?.();
@@ -127,7 +146,7 @@ export class AgentHost {
 
     async start() {
         // The MUTE ALL AGENTS button follows who is connected
-        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => this.renderMute(), 1000);
+        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => { this.queue.expire(); this.renderMute(); }, 1000);
         for (const agent of this.agents) {
             if (this.links.has(agent.id)) continue;
             const relay = new this.RelayClass({ token: agent.token, role: 'host', onMessage: (msg) => this._onMessage(agent, msg) });
@@ -148,6 +167,13 @@ export class AgentHost {
         const msg = cleanAgentMessage(raw);
         if (!msg) return;
         link.seen = Date.now();
+        if (msg.t === 'propose') {
+            // Every draft leaves a receipt, a refused one too (muted, not granted, too many)
+            const r = this.queue.propose(agent, msg, { muted: this.muted });
+            link.relay.send({ t: 'proposal', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
+            this.onChange?.();
+            return;
+        }
         if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
         if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
         else if (msg.t === 'ping') link.relay.send({ t: 'pong', n: msg.n });
@@ -170,5 +196,41 @@ export class AgentHost {
         btn.textContent = this.muted ? 'AGENTS MUTED: UNMUTE' : `MUTE ALL AGENTS (${n})`;
         btn.classList?.toggle?.('muted', this.muted);
         if (!btn.dataset.wired) { btn.dataset.wired = '1'; btn.addEventListener('click', () => { this.setMuted(!this.muted); this.renderMute(doc); }); }
+        this.renderQueue(doc);
+    }
+
+    // The AGENT DRAFTS button and panel: shown with the mute button, or while drafts wait.
+    renderQueue(doc = globalThis.document) {
+        const btn = doc?.getElementById?.('agents-queue');
+        const panel = doc?.getElementById?.('agents-panel');
+        if (!btn || !panel) return;
+        const n = this.queue.pending.length;
+        btn.style.display = n || this.connectedCount() || this.muted ? '' : 'none';
+        btn.textContent = `AGENT DRAFTS (${n})`;
+        const sig = `${n}|${this.queue.receipts.length}|${this.queue.pending.map((x) => x.pid).join()}`;
+        if (panel.dataset.sig !== sig && !panel.contains?.(doc.activeElement)) { panel.dataset.sig = sig; panel.innerHTML = queueHtml(this.queue.pending, this.queue.receipts); }
+        if (!btn.dataset.wired) {
+            btn.dataset.wired = '1';
+            btn.addEventListener('click', () => panel.classList.toggle('hidden'));
+            panel.addEventListener('click', (e) => {
+                const a = e.target?.dataset?.approve, d = e.target?.dataset?.decline;
+                if (a) { const text = e.target.closest('li')?.querySelector('textarea')?.value; this.queue.decide(a, true, { text }); }
+                else if (d) this.queue.decide(d, false);
+                else if (e.target?.id === 'agents-receipts-save') this._saveReceipts(doc);
+                else return;
+                panel.dataset.sig = '';
+                this.renderQueue(doc);
+            });
+        }
+    }
+
+    _saveReceipts(doc) {
+        try {
+            const url = URL.createObjectURL(new Blob([this.queue.exportText()], { type: 'application/json' }));
+            const a = doc.createElement('a');
+            a.href = url; a.download = `agent-receipts-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) { console.warn('[AgentLink] could not save receipts:', e); }
     }
 }

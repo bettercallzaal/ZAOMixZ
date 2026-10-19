@@ -919,3 +919,15 @@ body.pro-mode #pro-mode-toggle { height: 34px; padding: 3px; }
 .dj-setting-switch { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; accent-color: var(--mz-play); cursor: pointer; }
 .dj-setting-words .dj-setting-text { width: 100%; }
 .dj-setting-words textarea { width: 100%; margin-top: 6px; resize: vertical; font-family: var(--font-mono); font-size: 0.74rem; color: var(--mz-text); background: var(--mz-inset); border: 1px solid var(--mz-line-hi); border-radius: 8px; padding: 6px 8px; }
+
+/* Agent drafts and receipts (AgentQueue.js) */
+.agents-panel { position: fixed; top: 64px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; z-index: 900; background: #0f1118; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 12px; color: #f1f3f8; }
+.agents-panel.hidden { display: none; }
+.agent-queue-title { font-size: .72rem; letter-spacing: .1em; color: #8a90a6; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.agent-drafts, .agent-receipts { list-style: none; margin: 0; padding: 0; }
+.agent-draft { border-top: 1px solid rgba(255,255,255,.1); padding: 8px 0; }
+.agent-draft textarea { width: 100%; min-height: 54px; margin: 6px 0; background: #07080c; color: inherit; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 6px; font: inherit; }
+.agent-draft-row { display: flex; gap: 8px; }
+.agents-panel button { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 4px 10px; font: inherit; font-weight: 700; letter-spacing: .06em; cursor: pointer; }
+.agent-receipt { font-size: .8rem; padding: 4px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.agent-empty { color: #8a90a6; font-size: .85rem; padding: 6px 0; }

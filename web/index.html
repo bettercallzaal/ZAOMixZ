@@ -177,6 +177,7 @@
                 <button class="btn-toolbar btn-sm btn-install hidden" id="install-btn">INSTALL</button>
                 <button class="btn-toolbar btn-sm btn-test" id="test-open" title="What to test this round, and send what you found">TEST</button>
                 <button class="btn-toolbar btn-sm btn-library" id="library-open" title="Open the music library over the decks">LIBRARY</button>
+                <button class="btn-toolbar btn-sm btn-agents-queue" id="agents-queue" style="display:none" title="Drafts from agents, waiting for you to approve or decline, and the receipts">AGENT DRAFTS</button>
                 <button class="btn-toolbar btn-sm btn-agents-mute" id="agents-mute" style="display:none" title="Mute every connected agent: drops what they proposed, refuses anything new, sends them nothing">MUTE ALL AGENTS</button>
                 <button class="btn-toolbar btn-sm btn-phone" id="remote-open" title="Run this set from your phone, from anywhere">PHONE</button>
                 <button class="btn-toolbar btn-sm btn-move" id="move-open" title="One small thing to try, one at a time">TRY A MOVE</button>
@@ -1738,6 +1739,7 @@
     </div>
 
     <!-- ===== PHONE: run the set from a phone ===== -->
+    <div class="agents-panel hidden" id="agents-panel" aria-label="Agent drafts and receipts"></div>
     <div class="remote-panel hidden" id="remote-panel">
         <div class="remote-head">
             <span class="remote-title">RUN THE SET FROM YOUR PHONE</span>

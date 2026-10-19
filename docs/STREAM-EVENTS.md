@@ -102,6 +102,8 @@ Twitch chat, ZAO MixZ desk, battle platforms (adapters)
 
 ### Built so far
 - **Gate 1, identity** (`web/dj/AgentLink.js`). Each agent gets a key of its own (`mza1.` and a 128-bit token), on a channel of its own. It never gets the phone link, whose token is also the key to the whole phone channel. The desk knows which agent sent a message by the channel it arrived on, and stamps every proposal `from: 'agent'` with the desk's name for that agent. Whatever the agent writes about its own name, role or device is dropped. In gate 1 an agent may only say `hello` and `ping`, and it receives the published events (`OUT_TYPES`, only while ON AIR). A request stamped `from: 'agent'` never auto-plays, whatever the AUTO-PLAY REQUESTS switch says. Nothing in the app creates an agent yet.
+- **Gate 2, MUTE ALL AGENTS** (`AgentHost.setMuted`). A toolbar button on the desk, shown whenever an agent is connected or the agents are muted, and a DJ-only button on the phone. Muted: every waiting draft is dropped, new ones are refused, no events go to agents, and it stays muted across a reload.
+- **Gate 3, the approval queue and receipts** (`web/dj/AgentQueue.js`). An agent may send `propose` with `kind` (`comment` or `question`) and `text`, and only for a kind the DJ granted that agent (`AgentHost.grant`); every kind starts off. A draft waits in the AGENT DRAFTS panel until the DJ approves it (as written or edited) or declines it, and expires after ten minutes. Every proposal and decision leaves a receipt (agent, time, kind, text, outcome), kept in the browser and saveable as a file. Approving only records it: where an approved draft is published is a later gate.
 
 ### Required before any outside agent connects
 

@@ -2,7 +2,8 @@
 // Full offline support with app shell caching, audio IndexedDB caching,
 // graceful updates, and background sync
 
-const CACHE_VERSION = 50;
+// 'dev' in the repo. The deploy writes a hash of web/ here (scripts/stamp-sw.mjs), so PRs never bump it.
+const CACHE_VERSION = 'dev';
 const CACHE_NAME = `aurdour-v${CACHE_VERSION}`;
 const AUDIO_CACHE_NAME = 'aurdour-audio-v1';
 
@@ -237,6 +238,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // Unstamped (a local server): let the network answer, so an edit is never hidden by the cache.
+    if (CACHE_VERSION === 'dev') return;
 
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;

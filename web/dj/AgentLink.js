@@ -106,6 +106,7 @@ export class AgentHost {
     // publish(type, data): where an approved draft goes out, as a stream event (StreamEvents.emit).
     // director: where picks come from and go (deskDirector). Without one, no set is running.
     // secrets: () => the secrets the desk holds only in memory (AgentSecrets.deskSecrets).
+    // Required: without it nothing is sent to any agent (gate 7).
     constructor({ RelayClass = Relay, storage = globalThis.localStorage, session = globalThis.sessionStorage, onChange = null, publish = null, now = () => Date.now(), director = null, secrets = null } = {}) {
         Object.assign(this, { RelayClass, storage, session, onChange, publish, now, director, secrets });
         this.agents = this._load();
@@ -235,10 +236,12 @@ export class AgentHost {
     }
 
     // Every secret the desk holds right now: what the browser keeps, every agent's own token,
-    // and what the desk holds in memory. Null when the in-memory list cannot be read.
+    // and what the desk holds in memory. Null when the in-memory list cannot be read, or when
+    // the host was built without one: a host that forgot it sends nothing, not everything.
     _secretsNow() {
+        if (typeof this.secrets !== 'function') return null;
         let extra;
-        try { extra = this.secrets ? this.secrets() : []; } catch (e) { return null; }
+        try { extra = this.secrets(); } catch (e) { return null; }
         return [...storedSecrets(this.storage, this.session), ...this.agents.map((a) => a.token), ...(Array.isArray(extra) ? extra : [])];
     }
 

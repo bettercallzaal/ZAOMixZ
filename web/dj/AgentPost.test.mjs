@@ -25,7 +25,7 @@ console.log('Only the DJ\'s approval publishes');
     const relays = [];
     class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
     let clock = Date.UTC(2026, 9, 19);
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), publish: (type, data) => posts.push({ type, data }), now: () => (clock += 21000) });
+    const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: store(), publish: (type, data) => posts.push({ type, data }), now: () => (clock += 21000) });
     const a = host.add('Hype Bot');
     host.grant(a.agent.id, 'comment', true);
     await host.start();

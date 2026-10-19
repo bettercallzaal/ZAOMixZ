@@ -24,7 +24,7 @@ console.log('AgentLink: an agent has a key of its own');
 {
     const st = store();
     st.setItem('mixz-remote-token', 'f'.repeat(32));
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: st });
+    const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: st });
     const made = host.add('Next-Track Bot');
     const token = tokenFromKey(made.key);
     check('the key holds a fresh token of its own', validToken(token) && made.key.startsWith('mza1.'));
@@ -59,7 +59,7 @@ console.log('AgentLink: the desk side');
 {
     relays.length = 0;
     const st = store();
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: st });
+    const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: st });
     const a = host.add('Alpha'), b = host.add('Beta');
     await host.start();
     check('one channel per agent, each on its own token', relays.length === 2 && relays[0].token === tokenFromKey(a.key) && relays[1].token === tokenFromKey(b.key) && relays.every((r) => r.role === 'host'));

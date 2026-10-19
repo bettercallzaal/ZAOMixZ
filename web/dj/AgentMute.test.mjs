@@ -22,7 +22,7 @@ const ev = () => envelope('track.changed', { title: 'Song' }, 1);
 
 console.log('Muting');
 const st = store();
-const host = new AgentHost({ RelayClass: FakeRelay, storage: st });
+const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: st });
 host.add('Alpha');
 await host.start();
 const r = relays[0];
@@ -39,7 +39,7 @@ host.sendEvent(ev());
 check('no events go to agents', r.sent.filter((m) => m.t === 'ev').length === before);
 r.onMessage({ t: 'hello' });
 check('an agent saying hello is told it is muted, not welcomed', r.sent.at(-1).t === 'muted' && !r.sent.slice(-1).some((m) => m.t === 'welcome'));
-check('muted stays muted across a reload', st.getItem(MUTED_KEY) === 'on' && new AgentHost({ RelayClass: FakeRelay, storage: st }).muted === true);
+check('muted stays muted across a reload', st.getItem(MUTED_KEY) === 'on' && new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: st }).muted === true);
 host.setMuted(false);
 host.sendEvent(ev());
 check('unmuting lets events and proposals through again', r.sent.at(-1).t === 'ev' && host.accept({ kind: 'recommendation', track: 't3' }) !== null);
@@ -48,7 +48,7 @@ console.log('The desk button');
 {
     const btn = { style: {}, dataset: {}, textContent: '', classList: { toggle() {} }, handlers: [], addEventListener(_e, f) { this.handlers.push(f); } };
     const doc = { getElementById: (id) => (id === 'agents-mute' ? btn : null) };
-    const h = new AgentHost({ RelayClass: FakeRelay, storage: store() });
+    const h = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: store() });
     h.renderMute(doc);
     check('hidden with no agent connected and not muted', btn.style.display === 'none');
     h.add('Beta'); relays.length = 0; await h.start(); relays[0].onMessage({ t: 'hello' });
@@ -65,7 +65,7 @@ console.log('The desk button');
 
 console.log('The DJ\'s phone');
 {
-    const h = new AgentHost({ RelayClass: FakeRelay, storage: store() });
+    const h = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: store() });
     const dj = { agents: h, decks: {}, audioRouter: {} };
     const cmd = cleanCommand({ a: 'agentsmute', on: 1 });
     check('the phone may send MUTE AGENTS', cmd?.a === 'agentsmute' && cmd.on === true);

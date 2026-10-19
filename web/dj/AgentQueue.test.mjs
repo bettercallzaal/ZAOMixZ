@@ -63,7 +63,7 @@ console.log('Through the desk');
     const relays = [];
     class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
     let clock = t0;
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), now: () => (clock += 21000) });
+    const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: store(), now: () => (clock += 21000) });
     const a = host.add('Alpha');
     await host.start();
     const r = relays[0];
@@ -115,7 +115,7 @@ console.log('Gate 5: one draft per agent every 20 seconds, and the chat filter')
     const st = store();
     st.setItem('mixz-chat-block', 'rude\nnope');
     let clock = t0;
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: st, now: () => (clock += 21000) });
+    const host = new AgentHost({ secrets: () => [], RelayClass: FakeRelay, storage: st, now: () => (clock += 21000) });
     const a = host.add('Alpha');
     host.grant(a.agent.id, 'comment', true);
     await host.start();

@@ -145,6 +145,20 @@ console.log('When the secrets cannot be read, nothing goes out');
     check('each is counted as held', host.queue.refusals.some((x) => x.kind === 'outbound' && x.reason === 'held: secrets unreadable'));
 }
 
+console.log('A host built without the secrets option sends nothing');
+{
+    const relays = [];
+    class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
+    const host = new AgentHost({ RelayClass: FakeRelay, storage: planted(), session: session() });
+    host.add('Alpha');
+    await host.start();
+    relays[0].onMessage({ t: 'hello' });
+    relays[0].onMessage({ t: 'ping', n: 1 });
+    host.sendEvent(envelope('track.changed', { title: 'Clean' }, 1));
+    check('no welcome, pong or event goes out', relays.length === 1 && relays[0].sent.length === 0);
+    check('each is counted as held', host.queue.refusals.find((x) => x.kind === 'outbound')?.reason === 'held: secrets unreadable');
+}
+
 console.log('In the source');
 {
     const src = readFileSync(join(here, 'AgentLink.js'), 'utf8');

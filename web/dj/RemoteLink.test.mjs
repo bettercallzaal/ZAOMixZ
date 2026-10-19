@@ -130,5 +130,13 @@ check('the dead free relay is gone', !ICE_SERVERS.some(s => String(s.urls).inclu
     check('requests: with AUTO-PLAY on, DJ MixZ takes the oldest one next', on.played.join() === 'Asked For' && on.status === 'next');
 }
 
+// The phone's request form says what of the caller is shown, right under the name field
+{
+    const { readFileSync } = await import('node:fs');
+    const html = readFileSync(new URL('../remote.html', import.meta.url), 'utf8');
+    const at = html.indexOf('id="req-name"'), notice = html.indexOf('id="req-shown"');
+    check('phone: the request form says the name is shown, next to the name field', at > 0 && notice > at && notice - at < 400 && /your name[^<]*show/i.test(html.slice(notice, notice + 200)));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

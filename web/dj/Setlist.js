@@ -563,6 +563,14 @@ export class Setlist {
         try { return await this._liveHost().claimRoom(name); } catch (e) { console.warn('[Setlist] lobby claim failed:', e); return { ok: false, why: 'error' }; }
     }
     releaseLobby() { this.live?.releaseRoom(); }
+    // Start a fresh live mix link (Settings), instead of waiting for six quiet hours
+    // Refused (false) while a lobby is held: let it go first.
+    newMixLink() {
+        if (this.live && !this.live.newSet()) return false;
+        this.live = null;
+        try { localStorage.removeItem('mixz-live-mix'); } catch (e) { /* no storage */ }
+        return true;
+    }
     lobbyHeld() { const r = this.live?.room; return r && !r.checking ? { room: r.room, name: r.name } : null; }
 
     async liveLink() {

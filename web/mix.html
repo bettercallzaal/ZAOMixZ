@@ -78,7 +78,7 @@
     <script src="music-source.js"></script>
     <script type="module">
         import { decodeMix, resolveTracks, fmtTime, mixLength } from './dj/MixPage.js';
-        import { parseMixHash, watchLive, watchRoom, roomHeld, LIVE_FOR_MS } from './dj/LiveMix.js';
+        import { parseMixHash, watchLive, watchRoom, roomHeld, isLiveNow } from './dj/LiveMix.js';
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         $('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'COPIED'; setTimeout(() => { $('copy').textContent = 'COPY THIS LINK'; }, 1500); };
@@ -95,6 +95,7 @@
         let tracks = [];
         let cur = -1;
         let heardAt = 0;
+        let signedAt = 0;   // when the desk signed the set this page shows (LIVE NOW comes from this)
         let holder = null;   // in a lobby: the claim of whoever holds it (LiveMix.js)
         const keyOf = (t) => (t ? `${t.src}|${t.id || t.title}|${t.at}` : '');
         const resolved = new Map();   // a song already looked up is not fetched again
@@ -115,9 +116,11 @@
             document.title = `${$('name').textContent} · ZAO MixZ`;
             $('sub').textContent = [mix.dj ? `Mixed by ${mix.dj}` : '', mix.n && dateText ? dateText : ''].filter(Boolean).join(' · ');
             const len = mixLength(mix);
-            const live = hash.live && heardAt && Date.now() - heardAt < LIVE_FOR_MS;
+            const live = hash.live && heardAt && isLiveNow(signedAt);
+            // A set read from the address under a live link, before the desk's signed copy arrives
+            const unconfirmed = hash.live && !heardAt && hash.m ? '<span class="chip">FROM THIS LINK, NOT YET CONFIRMED BY THE DJ</span>' : '';
             const lob = holder ? `<span class="chip">LOBBY ${esc(holder.name.toUpperCase())}${roomHeld(holder, Date.now()) ? '' : ': FREE'}</span>` : '';
-            $('chips').innerHTML = `${live ? '<span class="chip live">LIVE NOW</span>' : ''}${lob}<span class="chip">${mix.t.length} ${mix.t.length === 1 ? 'SONG' : 'SONGS'}</span>${len ? `<span class="chip">${Math.round(len / 60)} MIN</span>` : ''}`;
+            $('chips').innerHTML = `${live ? '<span class="chip live">LIVE NOW</span>' : ''}${unconfirmed}${lob}<span class="chip">${mix.t.length} ${mix.t.length === 1 ? 'SONG' : 'SONGS'}</span>${len ? `<span class="chip">${Math.round(len / 60)} MIN</span>` : ''}`;
         };
         let showing = 0;
         const show = async (mix) => {
@@ -159,7 +162,7 @@
         // The set of one host, as it plays. In a lobby the address stays the lobby's link.
         let heard = false;
         const onLive = (u) => {
-            heard = true; heardAt = Date.now();
+            heard = true; heardAt = Date.now(); signedAt = u.ts;
             hash.m = u.m;
             // The set in the address too, so a copy of this link keeps the mix whatever the relay does
             if (!hash.lobby) { try { history.replaceState(null, '', `#live=${hash.live}&m=${u.m}`); } catch (e) { /* address stays */ } }

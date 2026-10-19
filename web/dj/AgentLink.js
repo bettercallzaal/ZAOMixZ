@@ -28,12 +28,13 @@ import { OUT_TYPES } from './StreamEvents.js';
 import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
 import { agentPostData } from './AgentPost.js';
 import { CHAT_BLOCK_KEY } from './Settings.js';
-import { PickBoard, PICK_KIND, pickList } from './AgentPick.js';
+import { PickBoard, PICK_KIND, pickList, pickId } from './AgentPick.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
 export const MAX_AGENTS = 8;
 export const MUTED_KEY = 'mixz-agents-muted';
+export const TRACKS_RATE_MS = 5000;   // one set list per agent this often
 // What an agent may send. Anything else is dropped. 'propose' (gate 3) is a draft for the
 // DJ's approval queue (AgentQueue.js), and only of a kind the DJ granted that agent.
 // 'tracks' and 'recommend' (gate 6) need the 'next' grant: the set's songs, and a pick of one.
@@ -176,7 +177,7 @@ export class AgentHost {
 
     async start() {
         // The MUTE ALL AGENTS button follows who is connected
-        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => { this.queue.expire(); if (this.picks.expire().length) this.director?.refresh?.(); this.renderMute(); }, 1000);
+        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => { this.queue.expire(); if (this.picks.expire().length + this.closeStalePicks().length) this.director?.refresh?.(); this.renderMute(); }, 1000);
         for (const agent of this.agents) {
             if (this.links.has(agent.id)) continue;
             const relay = new this.RelayClass({ token: agent.token, role: 'host', onMessage: (msg) => this._onMessage(agent, msg) });
@@ -214,7 +215,11 @@ export class AgentHost {
         if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
         if (msg.t === 'tracks') {
             const fresh = this.agents.find((a) => a.id === agent.id);
-            link.relay.send(fresh?.perms?.[PICK_KIND] ? { t: 'tracks', list: pickList(this._pickable()) } : { t: 'tracks', list: [], reason: 'not granted' });
+            if (!fresh?.perms?.[PICK_KIND]) { link.relay.send({ t: 'tracks', list: [], reason: 'not granted' }); return; }
+            const now = this.now();
+            if (link.lastTracks != null && now - link.lastTracks < TRACKS_RATE_MS) { link.relay.send({ t: 'tracks', list: [], reason: 'too fast' }); return; }
+            link.lastTracks = now;
+            link.relay.send({ t: 'tracks', list: pickList(this._pickable()) });
             return;
         }
         if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
@@ -228,11 +233,22 @@ export class AgentHost {
     playPick(pid) {
         const p = this.picks.find(pid);
         if (!p || this.muted) return false;
+        // A pick waits up to ten minutes: the song may have played, or the set moved on, since
+        if (!this._inSet(p)) { this.picks.close(pid, 'not in the set'); this.director?.refresh?.(); this.onChange?.(); return false; }
         if (!this.director?.swap?.(p.track)) return false;
         this.picks.taken(pid);
         this.onChange?.();
         return true;
     }
+
+    _inSet(p, pickable = this._pickable()) { return pickable.some((t) => pickId(t) === p.id); }
+
+    // The picks the bar shows: only ones still waiting in the set.
+    shownPicks() { const pickable = this._pickable(); return this.picks.shown().filter((p) => this._inSet(p, pickable)); }
+
+    // Picks whose song is no longer waiting in the set (played, locked in next, or the set
+    // stopped) close with a receipt instead of lingering.
+    closeStalePicks() { const pickable = this._pickable(); return this.picks.picks.filter((p) => !this._inSet(p, pickable)).map((p) => this.picks.close(p.pid, 'not in the set')); }
 
     dismissPick(pid) { const r = this.picks.dismiss(pid); if (r) this.onChange?.(); return !!r; }
 

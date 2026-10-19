@@ -132,6 +132,42 @@ console.log('Through the desk');
     check('without DJ MixZ, nothing either', deskDirector({}).pickable().length === 0 && deskDirector({}).swap(set[0]) === false);
 }
 
+console.log('A pick whose song is no longer waiting');
+{
+    const relays = [];
+    class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
+    const mixz = { running: true, human: false, index: 0, plan: [song('s1', 'First'), song('s2', 'Second'), ...set].map((track) => ({ track })), swaps: [], renders: 0 };
+    mixz.swapNext = (t) => { mixz.swaps.push(t.id); return true; };
+    mixz._renderBar = () => { mixz.renders++; };
+    let clock = t0;
+    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), now: () => clock, director: deskDirector({ djMixz: mixz }) });
+    const a = host.add('Alpha');
+    host.grant(a.agent.id, 'next', true);
+    await host.start();
+    const r = relays[0];
+    r.onMessage({ t: 'hello' });
+    r.onMessage({ t: 'tracks' });
+    r.onMessage({ t: 'tracks' });
+    check('a second set list inside 5 seconds is refused', r.sent.at(-1).list.length === 0 && r.sent.at(-1).reason === 'too fast');
+    clock += 5000;
+    r.onMessage({ t: 'tracks' });
+    check('after 5 seconds the list comes again', r.sent.at(-1).list.length === 3);
+    r.onMessage({ t: 'recommend', track: 's4', why: 'w' });
+    const pid = host.picks.shown()[0].pid;
+    check('while s4 still waits, the bar shows the pick', host.shownPicks().length === 1);
+    mixz.index = 3;   // the set moved on: s4 is playing now
+    check('once s4 is playing, the bar no longer shows it', host.shownPicks().length === 0);
+    check('a tap on it swaps nothing', host.playPick(pid) === false && mixz.swaps.length === 0);
+    check('and it closes with a receipt', !host.picks.find(pid) && host.queue.receipts.at(-1).outcome === 'dropped' && host.queue.receipts.at(-1).reason === 'not in the set');
+    mixz.index = 0;
+    clock += PICK_RATE_MS;
+    r.onMessage({ t: 'recommend', track: 's5', why: 'w' });
+    mixz.running = false;   // the set stopped
+    const gone = host.closeStalePicks();
+    check('when the set stops, waiting picks close by themselves', gone.length === 1 && host.picks.picks.length === 0 && gone[0].reason === 'not in the set');
+    host.stop();
+}
+
 console.log('The DJ MixZ bar');
 {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'DjMixz.js'), 'utf8');
@@ -139,6 +175,7 @@ console.log('The DJ MixZ bar');
     check("each pick is labelled with the agent's name", bar.includes('AI PICK FROM ${esc(p.agent)}: ${esc(p.title)}'));
     check('everything an agent wrote is escaped', bar.includes('data-pid="${esc(p.pid)}"') && bar.includes('title="${esc(p.why'));
     check('picks are hidden during a handover', /picks = !busy \?/.test(bar));
+    check('the bar shows only picks still waiting in the set', bar.includes('this.dj.agents?.shownPicks?.()') && !bar.includes('picks?.shown?.()'));
     check('a tap goes through the agent host, not straight to the decks', bar.includes("agents?.playPick?.(el.dataset.pid)") && !/agentpick[^\n]*swapNext/.test(bar));
     const sw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'sw.js'), 'utf8');
     check('AgentPick.js is in the offline shell', sw.includes("'/dj/AgentPick.js'"));

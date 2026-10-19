@@ -81,6 +81,7 @@ export class PickBoard {
     // The DJ tapped it and the swap went through.
     taken(pid) { const p = this.find(pid); return p ? this._close(p, 'played next') : null; }
     dismiss(pid) { const p = this.find(pid); return p ? this._close(p, 'dismissed') : null; }
+    close(pid, reason) { const p = this.find(pid); return p ? this._close(p, 'dropped', { reason }) : null; }
 
     expire() { const now = this.now(); return this.picks.filter((p) => now - p.at >= EXPIRE_MS).map((p) => this._close(p, 'expired')); }
 

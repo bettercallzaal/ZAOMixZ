@@ -553,7 +553,7 @@ export class DjMixz {
         // Agents' picks (AgentPick.js): each labelled with the agent's name, played only on a tap
         let picks = '';
         try {
-            picks = !busy ? (this.dj.agents?.picks?.shown?.() || []).map((p) => `<button class="djmixz-bar-btn swap agentpick" data-act="agentpick" data-pid="${esc(p.pid)}" title="${esc(p.why || 'no reason given')}">AI PICK FROM ${esc(p.agent)}: ${esc(p.title)}</button><button class="djmixz-bar-btn agentdismiss" data-act="agentdismiss" data-pid="${esc(p.pid)}" aria-label="Dismiss ${esc(p.agent)}'s pick">X</button>`).join('') : '';
+            picks = !busy ? (this.dj.agents?.shownPicks?.() || []).map((p) => `<button class="djmixz-bar-btn swap agentpick" data-act="agentpick" data-pid="${esc(p.pid)}" title="${esc(p.why || 'no reason given')}">AI PICK FROM ${esc(p.agent)}: ${esc(p.title)}</button><button class="djmixz-bar-btn agentdismiss" data-act="agentdismiss" data-pid="${esc(p.pid)}" aria-label="Dismiss ${esc(p.agent)}'s pick">X</button>`).join('') : '';
         } catch (e) { picks = ''; }
         const swaps = adv && !busy ? adv.alts.map((a, i) => `<button class="djmixz-bar-btn swap${a.better ? ' better' : ''}" data-act="swap" data-i="${i}" title="${esc(a.reasons.join(', '))}">${a.better ? 'BETTER FIT: ' : 'OR: '}${esc(a.track.title)}</button>`).join('') : '';
         bar.classList.toggle('human', this.human);

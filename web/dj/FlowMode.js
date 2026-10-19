@@ -388,7 +388,9 @@ export class FlowMode {
         // A slow load eats into the time left on the outgoing song. The fade must end before
         // that song does: shorten it to fit, and if the song has already run out, cut.
         const out = this.dj.decks[this.currentDeck];
-        const left = (out?.getDuration?.() || 0) - (out?.getCurrentTime?.() || 0);
+        // A length not known yet (0) is no reason to cut: treat the time left as unlimited
+        const dur = out?.getDuration?.() || 0;
+        const left = dur > 0 ? dur - (out?.getCurrentTime?.() || 0) : Infinity;
         if (!out?.isPlaying || left <= 1.5) { this._cut(idleDeck, direction, track); return; }
         const seconds = Math.min(this.transitionDuration, Math.max(1.5, left - 0.5));
         if (engine) {

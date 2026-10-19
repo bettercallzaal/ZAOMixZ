@@ -238,6 +238,15 @@ console.log('Flow Mode: the fade fits the time left');
     playTo(flow, decks.A, 25); tick(400);
     check('with plenty of time left the fade keeps its planned length', eng.starts[0].seconds === 8);
 }
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    decks.A.duration = 0; // a stream whose length is not known yet
+    flow.skip(); tick(400);
+    check('a song whose length is not known yet still fades on SKIP, it does not cut', eng.starts.length === 1 && eng.starts[0].seconds === 8);
+}
 
 // ── 4. No mix engine, or one that fails ───────────────────────
 console.log('Flow Mode: no mix engine');

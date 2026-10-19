@@ -917,3 +917,5 @@ body.pro-mode #pro-mode-toggle { height: 34px; padding: 3px; }
 .dj-setting-text small { font-size: 0.72rem; color: var(--mz-muted); line-height: 1.35; }
 .dj-setting-text .dj-setting-default { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.04em; }
 .dj-setting-switch { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; accent-color: var(--mz-play); cursor: pointer; }
+.dj-setting-words .dj-setting-text { width: 100%; }
+.dj-setting-words textarea { width: 100%; margin-top: 6px; resize: vertical; font-family: var(--font-mono); font-size: 0.74rem; color: var(--mz-text); background: var(--mz-inset); border: 1px solid var(--mz-line-hi); border-radius: 8px; padding: 6px 8px; }

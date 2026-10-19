@@ -1,5 +1,7 @@
 // Settings.js — Settings panel UI for preferences, output routing, crossfader curve, key shift
 
+import { esc } from './Html.js';
+
 // The DJ's on/off switches, in one place (Zaal, 18 Oct 2026: "a simple settings page").
 // Each one already exists somewhere in the app and keeps its own saved value; this list only
 // says what it is, what it does and its safe default, and flips it through its own module.
@@ -37,6 +39,11 @@ export const DJ_SETTINGS = [
 
 const storageGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 
+// Words never shown from stream chat: a chat line or !sr request with one is held back
+// (ChatFilter.moderate, read by player.js _chatBlocked). One per line, or comma separated.
+export const CHAT_BLOCK_KEY = 'mixz-chat-block';
+export const cleanBlockList = (text) => String(text || '').split(/\n|,/).map((w) => w.trim()).filter(Boolean).slice(0, 200).join('\n');
+
 // The rows for the panel: plain text from the list above only, no outside data.
 export function djSettingsHtml(get = storageGet) {
     return `<div class="settings-label">DJ SETTINGS</div>` + DJ_SETTINGS.map((s) => {
@@ -44,7 +51,11 @@ export function djSettingsHtml(get = storageGet) {
         return `<label class="dj-setting" data-setting="${s.id}">`
             + `<span class="dj-setting-text"><b>${s.label}</b><small>${s.hint}</small><small class="dj-setting-default">Safe default: ${s.safe ? 'on' : 'off'}</small></span>`
             + `<input type="checkbox" class="dj-setting-switch" data-setting="${s.id}"${on ? ' checked' : ''} aria-label="${s.label}"></label>`;
-    }).join('');
+    }).join('')
+        + `<label class="dj-setting dj-setting-words"><span class="dj-setting-text"><b>Words never shown from chat</b>`
+        + `<small>A Twitch or YouTube line or song request with one of these is held back. One per line.</small>`
+        + `<small class="dj-setting-default">Safe default: empty (links are always held)</small>`
+        + `<textarea id="dj-chat-block" rows="3" spellcheck="false" aria-label="Words never shown from chat">${esc(get(CHAT_BLOCK_KEY) || '')}</textarea></span></label>`;
 }
 
 export class Settings {
@@ -74,6 +85,11 @@ export class Settings {
         if (!box.dataset.wired) {
             box.dataset.wired = '1';
             box.addEventListener('change', (e) => {
+                if (e.target?.id === 'dj-chat-block') {
+                    try { localStorage.setItem(CHAT_BLOCK_KEY, cleanBlockList(e.target.value)); } catch (err) { /* no storage */ }
+                    this.renderDjSettings();
+                    return;
+                }
                 const id = e.target?.dataset?.setting;
                 const s = DJ_SETTINGS.find((x) => x.id === id);
                 if (s) { s.apply(this.dj, !!e.target.checked); this.renderDjSettings(); }

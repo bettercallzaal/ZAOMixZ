@@ -53,6 +53,25 @@ check('every switch has its label and its one-line hint', DJ_SETTINGS.every((s) 
 check('and its safe default', (html.match(/Safe default: off/g) || []).length === 3 && (html.match(/Safe default: on/g) || []).length === 1);
 check('each box shows the saved value (auto-play on, lights off)', /data-setting="auto-requests" checked/.test(html) && !/data-setting="lights" checked/.test(html));
 
+console.log('Settings: words never shown from chat');
+{
+    const { CHAT_BLOCK_KEY, cleanBlockList, Settings } = await import('./Settings.js');
+    check('it edits the same list the desk reads for chat (player.js)', src('../player.js').includes(`'${CHAT_BLOCK_KEY}'`));
+    const shown = djSettingsHtml((k) => (k === CHAT_BLOCK_KEY ? 'spam\n<b>x' : null));
+    check('the box shows the saved list, escaped', shown.includes('id="dj-chat-block"') && shown.includes('spam\n&lt;b&gt;x') && !shown.includes('<b>x'));
+    check('empty by default', /<textarea id="dj-chat-block"[^>]*><\/textarea>/.test(djSettingsHtml(empty)));
+    check('a list is tidied: one word per line, blanks and commas handled', cleanBlockList(' spam, scam \n\n bot ') === 'spam\nscam\nbot');
+    let onChange = null;
+    const box = { dataset: {}, set innerHTML(v) {}, addEventListener: (type, fn) => { if (type === 'change') onChange = fn; } };
+    const realGet = document.getElementById;
+    document.getElementById = (id) => (id === 'dj-settings' ? box : null);
+    const settings = Object.create(Settings.prototype); settings.dj = {};
+    settings.renderDjSettings();
+    onChange({ target: { id: 'dj-chat-block', value: 'spam,\n scam ' } });
+    document.getElementById = realGet;
+    check('typing in the box saves the tidied list where the desk reads it', store.get(CHAT_BLOCK_KEY) === 'spam\nscam');
+}
+
 console.log('Settings: reachable in the simple view');
 const page = src('../index.html');
 const btn = page.indexOf('id="settings-btn"');

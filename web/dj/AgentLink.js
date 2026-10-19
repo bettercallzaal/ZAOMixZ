@@ -8,8 +8,13 @@
 //
 // What an agent may do in gate 1: say hello, ping, and receive the stream events the desk
 // publishes (StreamEvents.OUT_TYPES, while ON AIR). Nothing it sends reaches the decks, the
-// request line or the stream. Later gates add MUTE ALL, the approval queue with receipts, the
-// AI label, moderation with a rate limit, and agent.recommendation, each behind its own PR.
+// request line or the stream. Later gates add the approval queue with receipts, the AI label,
+// moderation with a rate limit, and agent.recommendation, each behind its own PR.
+//
+// Gate 2, MUTE ALL AGENTS: one control on the desk, shown whenever an agent is connected or
+// the agents are muted, and on the DJ's phone. Muted, every pending agent proposal is dropped,
+// new ones are refused and no events go to agents, until the DJ unmutes. It stays muted
+// across a reload.
 //
 // Nothing in the app makes an agent yet: no outside agent connects until every gate exists
 // and Zaal says yes. The top half is pure and runs under node: see AgentLink.test.mjs.
@@ -20,6 +25,7 @@ import { OUT_TYPES } from './StreamEvents.js';
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
 export const MAX_AGENTS = 8;
+export const MUTED_KEY = 'mixz-agents-muted';
 // What an agent may send in gate 1. Anything else is dropped.
 export const AGENT_IN = new Set(['hello', 'ping']);
 
@@ -66,6 +72,26 @@ export class AgentHost {
         Object.assign(this, { RelayClass, storage, onChange });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
+        this.pending = [];        // agent proposals waiting for the DJ (the approval queue, gate 3)
+        try { this.muted = this.storage?.getItem(MUTED_KEY) === 'on'; } catch (e) { this.muted = false; }
+    }
+
+    connectedCount(now = Date.now()) { return this.agents.filter((a) => this.connected(a.id, now)).length; }
+
+    // MUTE ALL AGENTS. Muting drops everything pending and tells every agent.
+    setMuted(on) {
+        this.muted = !!on;
+        try { this.storage?.setItem(MUTED_KEY, this.muted ? 'on' : 'off'); } catch (e) { /* no storage */ }
+        if (this.muted) this.pending = [];
+        for (const l of this.links.values()) l.relay.send({ t: 'muted', on: this.muted });
+        this.onChange?.();
+    }
+
+    // Where a proposal enters (gate 3 builds on this). Null while muted: refused.
+    accept(item) {
+        if (this.muted) return null;
+        this.pending.push(item);
+        return item;
     }
 
     _load() {
@@ -100,10 +126,12 @@ export class AgentHost {
     }
 
     async start() {
+        // The MUTE ALL AGENTS button follows who is connected
+        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => this.renderMute(), 1000);
         for (const agent of this.agents) {
             if (this.links.has(agent.id)) continue;
             const relay = new this.RelayClass({ token: agent.token, role: 'host', onMessage: (msg) => this._onMessage(agent, msg) });
-            this.links.set(agent.id, { relay, seen: 0 });
+            this.links.set(agent.id, { relay, seen: 0, hello: false });
             try { await relay.open(); } catch (e) { /* tries again on the next start */ }
         }
     }
@@ -120,13 +148,27 @@ export class AgentHost {
         const msg = cleanAgentMessage(raw);
         if (!msg) return;
         link.seen = Date.now();
-        if (msg.t === 'hello') { link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
+        if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
+        if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
         else if (msg.t === 'ping') link.relay.send({ t: 'pong', n: msg.n });
     }
 
     // A stream event for every connected agent (StreamEvents.emit, only while ON AIR).
     sendEvent(env) {
-        if (!forAgents(env)) return;
-        for (const [id, l] of this.links) if (this.connected(id)) l.relay.send({ t: 'ev', ev: env });
+        if (this.muted || !forAgents(env)) return;
+        // Only to an agent that said hello on this connection, not one that only pings
+        for (const [id, l] of this.links) if (l.hello && this.connected(id)) l.relay.send({ t: 'ev', ev: env });
+    }
+
+    // The desk's MUTE ALL AGENTS button: always there while an agent is connected or the agents
+    // are muted, so the DJ never has to look for it.
+    renderMute(doc = globalThis.document) {
+        const btn = doc?.getElementById?.('agents-mute');
+        if (!btn) return;
+        const n = this.connectedCount();
+        btn.style.display = n || this.muted ? '' : 'none';
+        btn.textContent = this.muted ? 'AGENTS MUTED: UNMUTE' : `MUTE ALL AGENTS (${n})`;
+        btn.classList?.toggle?.('muted', this.muted);
+        if (!btn.dataset.wired) { btn.dataset.wired = '1'; btn.addEventListener('click', () => { this.setMuted(!this.muted); this.renderMute(doc); }); }
     }
 }

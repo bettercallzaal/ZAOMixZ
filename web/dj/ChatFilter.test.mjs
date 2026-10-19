@@ -24,6 +24,11 @@ for (const t of ['song feat. Drake', 'e.g. this one', 'Mr. Brightside please', '
 }
 for (const t of ['t.me/x', 'join t.me/spam', 'x.com/u']) check(`held as a link, one-letter name: ${JSON.stringify(t)}`, moderate(t).reason === 'link');
 for (const t of ['i.e. that one', 'a.m. vibes', 'v2.0 remix']) check(`prose passes: ${JSON.stringify(t)}`, moderate(t).ok);
+// Spaced or spelled out, a one-letter name before a common ending is a link when a path follows
+for (const t of ['t. me/x', 'join t . me/spam', 't[.]me/x', 't (.) me/x', 't dot me/x', `t${C(0x3002)} me/x`]) {
+    check(`held as a link, one-letter name spaced: ${JSON.stringify(t)}`, moderate(t).reason === 'link');
+}
+for (const t of ['Plan B. Me and you', 'Part 1. Live set', 'I. Me. Mine', 'track a. co-written']) check(`prose passes: ${JSON.stringify(t)}`, moderate(t).ok);
 for (const [name, code] of [['soft hyphen', 0xad], ['combining grapheme joiner', 0x34f], ['Mongolian vowel separator', 0x180e]]) {
     check(`a ${name} cannot split a blocked word`, moderate(`bad${C(code)}word`, { blocked: ['badword'] }).reason === 'blocked word');
 }

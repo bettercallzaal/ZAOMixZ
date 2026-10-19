@@ -23,11 +23,15 @@ export const QUERY_MIN = 3;            // shorter than this matches too much
 const SCHEME = /\b[a-z][a-z0-9+.-]{1,9}:\/\//i;
 const BARE = /(^|[^a-z0-9@-])(www\.|[a-z0-9-]{2,}(\.[a-z0-9-]+)*\.[a-z]{2,}(?![a-z0-9]))/i;
 const ENDINGS = 'com|net|org|io|ai|dev|live|info|xyz|gg|tv|ly|me|co|app|link|site|online|shop|store|club|top|pro|biz|us|uk|ru|cn|de';
-const SPACED = new RegExp(`[a-z0-9-]{2,}\\s*(\\.|\\[\\s*\\.\\s*\\]|\\(\\s*\\.\\s*\\)|\\{\\s*\\.\\s*\\}|\\bdot\\b)\\s*(${ENDINGS})(?![a-z0-9])`, 'i');
+const DOT = '(\\.|\\[\\s*\\.\\s*\\]|\\(\\s*\\.\\s*\\)|\\{\\s*\\.\\s*\\}|\\bdot\\b)'; // "." as chat disguises it
+const SPACED = new RegExp(`[a-z0-9-]{2,}\\s*${DOT}\\s*(${ENDINGS})(?![a-z0-9])`, 'i');
 const DOTS = /[\u3002\uff0e\uff61\u2024\u2027\u00b7\u2219]/g; // other full stops people use for "."
 // A one-letter name counts only before a common ending ("t.me/x"), so "e.g." and "U.S." pass
 const SHORT = new RegExp(`(^|[^a-z0-9@-])[a-z0-9]\\.(${ENDINGS})(?![a-z0-9])`, 'i');
-const isLink = (t) => { const d = t.replace(DOTS, '.'); return SCHEME.test(d) || BARE.test(d) || SPACED.test(d) || SHORT.test(d); };
+// Spaced or spelled out ("t. me/x", "t dot me/x") it counts only with a path after it, so
+// "Plan B. Me and you" passes
+const SHORT_SPACED = new RegExp(`(^|[^a-z0-9@-])[a-z0-9]\\s*${DOT}\\s*(${ENDINGS})\\/`, 'i');
+const isLink = (t) => { const d = t.replace(DOTS, '.'); return SCHEME.test(d) || BARE.test(d) || SPACED.test(d) || SHORT.test(d) || SHORT_SPACED.test(d); };
 // Control characters and the invisible ones used to dodge filters, the soft hyphen, the
 // combining grapheme joiner and the Mongolian vowel separator included
 const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g;

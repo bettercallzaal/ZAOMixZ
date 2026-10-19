@@ -147,5 +147,29 @@ check('the dead free relay is gone', !ICE_SERVERS.some(s => String(s.urls).inclu
     check('stream: going next is announced too', sent.some((e) => e.data.status === 'next'));
 }
 
+// A "!sr" from stream chat: moderated, matched, on the board marked chat, never played by itself
+{
+    const { CHAT_MAX_WAITING } = await import('./ChatFilter.js');
+    const sent = [];
+    const host = {
+        relay: null, autoPlay: true, requests: new RequestQueue(), _renderRequests() {},
+        dj: { library: { zaoTracks: [{ id: 'rb', title: 'Rude Boy', artist: 'IMan Afrikah', source: 'audius', streamUrl: 'https://x' }], tracks: [], battleTracks: [] },
+            decks: { A: { isPlaying: true, metadata: { metadata: { title: 'On Now' } } }, B: { isPlaying: false } }, audioRouter: { _lastCrossfadePosition: 0 },
+            djMixz: { running: true, human: false, playNext: () => { sent.push('PLAYED'); return true; } }, streamEvents: { emit: (type, data) => sent.push({ type, data }) } },
+    };
+    host._announce = RemoteHost.prototype._announce; host._tell = RemoteHost.prototype._tell;
+    const res = RemoteHost.prototype.chatRequest.call(host, { platform: 'twitch', user: 'Ana', query: 'rude boy' });
+    const r = host.requests.items[0];
+    check('chat: a matched !sr goes on the board, marked from chat, with its platform', res.ok && r.title === 'Rude Boy' && r.from === 'chat' && r.note === 'via Twitch' && r.name === 'Ana');
+    check('chat: and goes out as request.updated', sent.some((e) => e.type === 'request.updated' && e.data.title === 'Rude Boy'));
+    host.relay = { send() {} }; RemoteHost.prototype._requestTick.call(host);
+    check('chat: even with AUTO-PLAY on, a chat request is not played by itself', !sent.includes('PLAYED') && r.status === 'waiting');
+    check('chat: a link or no match never reaches the board', !RemoteHost.prototype.chatRequest.call(host, { platform: 'twitch', user: 'Bo', query: 'rude boy https://x.example' }).ok
+        && !RemoteHost.prototype.chatRequest.call(host, { platform: 'twitch', user: 'Bo', query: 'nothing like it' }).ok && host.requests.items.length === 1);
+    for (let i = 0; i < CHAT_MAX_WAITING + 3; i++) host.dj.library.zaoTracks.push({ id: 's' + i, title: 'Song Number ' + i, artist: 'Z', source: 'audius', streamUrl: 'https://x' });
+    for (let i = 0; i < CHAT_MAX_WAITING + 3; i++) RemoteHost.prototype.chatRequest.call(host, { platform: 'youtube', user: 'u' + i, query: 'song number ' + i });
+    check(`chat: at most ${CHAT_MAX_WAITING} chat requests wait at once, so phones keep a turn`, host.requests.waiting().filter((x) => x.from === 'chat').length === CHAT_MAX_WAITING);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

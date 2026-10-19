@@ -72,6 +72,9 @@ console.log('RequestLine: a request goes on air only with a tap, or with AUTO-PL
     const agent = fresh();
     const r = agent.add('bot', { name: 'Bot' }, song('From A Bot')).request; r.from = 'agent';
     check('a request from an outside agent never plays by itself, switch or not', autoPick(agent, { ...run, on: true }) === null);
+    const chat = fresh();
+    chat.add('chat:twitch:ana', { name: 'Ana' }, song('From Chat')).request.from = 'chat';
+    check('a request from stream chat never plays by itself either', autoPick(chat, { ...run, on: true }) === null);
     q.set(q.first().rid, 'next');
     q.add('p2', { name: 'Bo' }, song('Second'));
     check('only one request lined up next at a time', autoPick(q, { ...run, on: true }) === null);

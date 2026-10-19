@@ -17,6 +17,7 @@ import { MOODS, tracksFrom } from './DjMixz.js';
 import { RequestQueue, cleanRequest, forCaller, canTape, autoPick } from './RequestLine.js';
 import { requestData } from './StreamEvents.js';
 import { canPlay } from './Licence.js';
+import { moderate, matchRequest, chatDevice, CHAT_MAX_WAITING } from './ChatFilter.js';
 
 export const STATE_HZ = 5;
 export const NEXT_MODES = ['smooth', 'up', 'down', 'key', 'mood', 'genre', 'double', 'wild'];
@@ -446,6 +447,28 @@ export class RemoteHost {
         this._announce(res.request);   // a new request, or one more caller on it
         say(res.joined ? 'Someone asked for that one too. You are on it with them.' : 'Got it. Your request is on the board.');
         this._renderRequests();
+    }
+
+    // A "!sr song" from Twitch or YouTube chat: moderated, matched to one playable track, and put
+    // on the board marked from chat. It waits for PLAY NEXT; it never plays by itself.
+    // { ok, reason, request }.
+    chatRequest(req, blocked = []) {
+        const m = moderate(req?.query, { blocked });
+        if (!m.ok) return { ok: false, reason: m.reason };
+        const user = moderate(req?.user, { blocked });
+        if (!user.ok) return { ok: false, reason: 'name' };
+        if (this.requests.waiting().filter((r) => r.from === 'chat').length >= CHAT_MAX_WAITING) return { ok: false, reason: 'chat requests full' };
+        const lib = this.dj.library || {};
+        const pool = [...tracksFrom(lib, 'zao'), ...tracksFrom(lib, 'local'), ...tracksFrom(lib, 'battles')].filter((t) => canPlay(t).ok);
+        const track = matchRequest(m.text, pool);
+        if (!track) return { ok: false, reason: 'no match' };
+        const platform = req.platform === 'youtube' ? 'YouTube' : req.platform === 'twitch' ? 'Twitch' : 'chat';
+        const res = this.requests.add(chatDevice(req.platform, user.text), { id: idOfTrack(track), name: user.text.slice(0, 24), note: `via ${platform}` }, track);
+        if (!res.ok) return { ok: false, reason: res.reason };
+        if (!res.joined) res.request.from = 'chat';   // set here, from the connection, never from the message
+        this._announce(res.request);
+        this._renderRequests();
+        return { ok: true, request: res.request };
     }
 
     // Tell the callers on this request, and the stream (request.updated, docs/STREAM-EVENTS.md).

@@ -44,6 +44,28 @@ const storageGet = (k) => { try { return localStorage.getItem(k); } catch (e) { 
 export const CHAT_BLOCK_KEY = 'mixz-chat-block';
 export const cleanBlockList = (text) => String(text || '').split(/\n|,/).map((w) => w.trim()).filter(Boolean).slice(0, 200).join('\n');
 
+// Host a lobby (LiveMix.js): name one and claim it; its link shows this desk's set while it
+// holds it, until the decks have been silent for 30 minutes. `held`: { room, name } or null.
+export function lobbyHtml(held = null, origin = '') {
+    const link = held ? `${origin}/mix.html#lobby=${held.room}` : '';
+    return `<div class="dj-setting dj-setting-lobby"><span class="dj-setting-text"><b>Host a lobby</b>`
+        + `<small>Name a lobby and claim it. Anyone with its link sees your set. It stays yours until your decks have been silent for 30 minutes; a lobby someone else is playing in cannot be claimed.</small>`
+        + (held
+            ? `<small class="dj-lobby-held">Hosting <b>${esc(held.name)}</b>: <span class="dj-lobby-link">${esc(link)}</span></small>`
+              + `<span class="dj-lobby-row"><button type="button" id="dj-lobby-copy">COPY LINK</button><button type="button" id="dj-lobby-release">LET IT GO</button></span>`
+            : `<span class="dj-lobby-row"><input id="dj-lobby-name" maxlength="40" placeholder="Lobby name, e.g. Main Stage" aria-label="Lobby name"><button type="button" id="dj-lobby-claim">CLAIM</button></span>`)
+        + `<small id="dj-lobby-status" class="dj-setting-default"></small></span></div>`;
+}
+
+// What the claim said, for the status line under the box.
+export function lobbyStatus(r) {
+    if (!r) return '';
+    if (r.ok) return 'Claimed. Share the link: SHARE THE MIX now copies it too.';
+    if (r.why === 'name') return 'Use letters or numbers for the name.';
+    if (r.why === 'taken') return `"${r.name}" is held: its host played ${r.minutes} ${r.minutes === 1 ? 'minute' : 'minutes'} ago. It frees up after 30 silent minutes.`;
+    return 'Could not reach the relays right now. Try again in a minute.';
+}
+
 // The rows for the panel: plain text from the list above only, no outside data.
 export function djSettingsHtml(get = storageGet) {
     return `<div class="settings-label">DJ SETTINGS</div>` + DJ_SETTINGS.map((s) => {
@@ -81,9 +103,28 @@ export class Settings {
     renderDjSettings() {
         const box = document.getElementById('dj-settings');
         if (!box) return;
-        box.innerHTML = djSettingsHtml();
+        box.innerHTML = djSettingsHtml() + lobbyHtml(this.dj.setlist?.lobbyHeld?.() || null, globalThis.location?.origin || '');
         if (!box.dataset.wired) {
             box.dataset.wired = '1';
+            box.addEventListener('click', async (e) => {
+                const id = e.target?.id;
+                const status = () => document.getElementById('dj-lobby-status');
+                if (id === 'dj-lobby-claim') {
+                    const name = document.getElementById('dj-lobby-name')?.value || '';
+                    e.target.disabled = true;
+                    if (status()) status().textContent = 'Checking that nobody is playing in it...';
+                    const r = await this.dj.setlist?.claimLobby?.(name);
+                    this.renderDjSettings();
+                    if (status()) status().textContent = lobbyStatus(r || { ok: false, why: 'error' });
+                } else if (id === 'dj-lobby-release') {
+                    this.dj.setlist?.releaseLobby?.();
+                    this.renderDjSettings();
+                } else if (id === 'dj-lobby-copy') {
+                    const held = this.dj.setlist?.lobbyHeld?.();
+                    if (held) navigator.clipboard?.writeText(`${window.location.origin}/mix.html#lobby=${held.room}`);
+                    if (status()) status().textContent = 'Link copied.';
+                }
+            });
             box.addEventListener('change', (e) => {
                 if (e.target?.id === 'dj-chat-block') {
                     try { localStorage.setItem(CHAT_BLOCK_KEY, cleanBlockList(e.target.value)); } catch (err) { /* no storage */ }

@@ -549,9 +549,25 @@ export class Setlist {
 
     // The live mix link: one link for the whole set, posted at the start, that shows every song
     // as it plays and then holds the finished mix (LiveMix.js). Made on first use.
+    _liveHost() {
+        // A lobby is held while a deck plays (LiveMix.js); the desk is window._djPlayer
+        this.live ||= new LiveMixHost(() => this.history, {
+            isPlaying: () => { const d = globalThis.window?._djPlayer?.decks; return !!(d?.A?.isPlaying || d?.B?.isPlaying); },
+            onRoomLost: (r) => this._showToast(`Lobby "${r.name}" passed to another host after 30 silent minutes. Your set stays on your own live link.`),
+        });
+        return this.live;
+    }
+
+    // Host a lobby by name (Settings). { ok, link } or { ok: false, why, minutes, name }.
+    async claimLobby(name) {
+        try { return await this._liveHost().claimRoom(name); } catch (e) { console.warn('[Setlist] lobby claim failed:', e); return { ok: false, why: 'error' }; }
+    }
+    releaseLobby() { this.live?.releaseRoom(); }
+    lobbyHeld() { const r = this.live?.room; return r && !r.checking ? { room: r.room, name: r.name } : null; }
+
     async liveLink() {
         try {
-            this.live ||= new LiveMixHost(() => this.history);
+            this._liveHost();
             return await this.live.link(window.location.origin);
         } catch (e) {
             console.warn('[Setlist] live mix link unavailable, sharing a snapshot:', e);
@@ -561,11 +577,12 @@ export class Setlist {
     }
 
     async shareMix() {
-        const live = await this.liveLink();
+        const room = this.lobbyHeld();
+        const live = room ? `${window.location.origin}/mix.html#lobby=${room.room}` : await this.liveLink();
         if (live) {
             const n = this.history.length;
             const said = n ? `${n} ${n === 1 ? 'song' : 'songs'} so far, and every song after this` : 'every song from the first one';
-            navigator.clipboard?.writeText(live).then(() => this._showToast(`Live mix link copied: it shows ${said}, and keeps the finished mix. Post it now or at the end.`)).catch(() => prompt('Live link to this mix:', live));
+            navigator.clipboard?.writeText(live).then(() => this._showToast(room ? `Lobby "${room.name}" link copied: it shows your set while you hold the lobby.` : `Live mix link copied: it shows ${said}, and keeps the finished mix. Post it now or at the end.`)).catch(() => prompt('Live link to this mix:', live));
             return live;
         }
         if (this.history.length === 0) { this._showToast('Nothing to share yet. Play a track first.'); return null; }

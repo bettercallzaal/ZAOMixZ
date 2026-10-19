@@ -1,5 +1,5 @@
 {
-  "buildCommand": "echo 'No build required'",
+  "buildCommand": "node scripts/stamp-sw.mjs",
   "outputDirectory": "web",
   "rewrites": [
     { "source": "/feedback", "destination": "/feedback.html" },

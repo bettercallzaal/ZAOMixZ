@@ -87,6 +87,11 @@ export async function readClaim(payload, room, subtle = crypto.subtle) {
 // Still held at `now`: its host played within the last 30 minutes.
 export const roomHeld = (c, now) => !!c && now - c.playedAt < LOBBY_HOLD_MS;
 
+// A claim dated more than two minutes ahead of this clock is ignored: a desk whose clock runs
+// fast would otherwise look 30 minutes ahead of a holder that is still playing.
+export const CLOCK_SLACK_MS = 2 * 60 * 1000;
+export const fromTheFuture = (c, now) => !!c && c.ts > now + CLOCK_SLACK_MS;
+
 // May the desk with key `pub` claim a room whose latest claim is `existing`?
 export function canClaim(existing, pub, now) {
     if (!existing || existing.pub === pub || !roomHeld(existing, now)) return { ok: true };
@@ -249,7 +254,7 @@ export class LiveMixHost {
     async _heard(topic, payload) {
         if (!this.room || topic !== this.room.topic) return;
         const c = await readClaim(payload, this.room.room);
-        if (!c) return;
+        if (!c || fromTheFuture(c, this.now())) return;
         this._claims.set(topic, nextHolder(this._claims.get(topic), c));
         if (!this.room || this.room.topic !== topic) return;   // let go or moved on while the claim was checked
         // Someone else claimed it after this desk had been silent 30 minutes: step back
@@ -261,6 +266,16 @@ export class LiveMixHost {
         }
     }
 
+    // True once relay `c` is connected and has acknowledged the subscription (8 s at most).
+    async _subscribed(c, topic) {
+        const ready = new Promise((resolve) => {
+            const sub = () => { try { c.subscribe(topic, { qos: 1 }, (err) => resolve(!err)); } catch (e) { resolve(false); } };
+            if (!c?.subscribe) return resolve(false);
+            if (c.connected) sub(); else c.on?.('connect', sub);
+        });
+        return Promise.race([ready, this.wait(8000).then(() => false)]);
+    }
+
     // Claim a lobby by name. { ok, link } or { ok: false, why, minutes, name }.
     async claimRoom(name) {
         const room = roomSlug(name);
@@ -269,8 +284,11 @@ export class LiveMixHost {
         const topic = await roomTopic(room);
         const prev = this.room;
         this.room = { room, name: roomName(name) || room, topic, checking: true };
-        for (const c of this.clients) c.subscribe?.(topic, { qos: 1 });
-        await this.wait(4000);   // the relays hand over the room's last claim when subscribed
+        // An empty room counts as free only if a relay actually took the subscription: hearing
+        // nothing because nothing is connected is not the same as nobody holding it.
+        const acked = await Promise.all(this.clients.map((c) => this._subscribed(c, topic)));
+        if (!acked.some(Boolean)) { if (this.room?.topic === topic) this.room = prev; return { ok: false, why: 'offline' }; }
+        await this.wait(3000);   // the relays hand over the room's last claim right after
         if (this.room?.topic !== topic) return { ok: false, why: 'changed' };   // another claim started meanwhile
         const existing = this._claims.get(topic);
         const ok = canClaim(existing && existing.pub !== this.lobby.pub ? existing : null, this.lobby.pub, this.now());
@@ -326,7 +344,8 @@ export async function watchRoom(room, onHolder, { connect = null } = {}) {
             c.on('connect', () => c.subscribe(topic, { qos: 1 }));
             c.on('error', () => { /* the other relay carries on */ });
             c.on('message', async (_t, payload) => {
-                const claim = await readClaim(payload.toString(), room);
+                const read = await readClaim(payload.toString(), room);
+                const claim = fromTheFuture(read, Date.now()) ? null : read;
                 const next = nextHolder(holder, claim);
                 if (next && next !== holder) { holder = next; onHolder(holder); }
             });

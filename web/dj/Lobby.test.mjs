@@ -8,7 +8,7 @@ const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${co
 process.removeAllListeners('warning');
 
 const L = await import('./LiveMix.js');
-const { roomSlug, roomName, roomUrl, roomTopic, signClaim, readClaim, canClaim, nextHolder, roomHeld, parseMixHash, newKeys, LiveMixHost, LOBBY_HOLD_MS } = L;
+const { roomSlug, roomName, roomUrl, roomTopic, signClaim, readClaim, canClaim, nextHolder, roomHeld, parseMixHash, newKeys, LiveMixHost, LOBBY_HOLD_MS, fromTheFuture } = L;
 const { lobbyHtml, lobbyStatus } = await import('./Settings.js');
 
 const MIN = 60000;
@@ -48,6 +48,7 @@ check('a page ignores another host while the holder is playing', nextHolder(held
 const late = c(B.pub, t0 + 41 * MIN, t0 + 41 * MIN);
 check('and follows the new host after 30 silent minutes', nextHolder(held, late) === late);
 check('then the old host coming back is ignored while the new one plays', nextHolder(late, c(A.pub, t0 + 45 * MIN, t0 + 45 * MIN)) === late);
+check('a claim dated more than two minutes ahead is ignored', fromTheFuture(c(B.pub, t0 + 3 * MIN, t0), t0) && !fromTheFuture(c(B.pub, t0 + MIN, t0), t0));
 check('the same host\'s newer claim replaces its older one, not the other way', nextHolder(held, c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN)).ts === t0 + 11 * MIN && nextHolder(c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN), held).ts === t0 + 11 * MIN);
 
 console.log('Two desks and one lobby, through the relay');
@@ -59,7 +60,7 @@ console.log('Two desks and one lobby, through the relay');
         const cl = {
             connected: true, subs: new Set(), h: {},
             on(ev, f) { (this.h[ev] ||= []).push(f); },
-            subscribe(topic) { this.subs.add(topic); if (retained.has(topic)) for (const f of this.h.message || []) f(topic, retained.get(topic)); },
+            subscribe(topic, _o, cb) { this.subs.add(topic); if (retained.has(topic)) for (const f of this.h.message || []) f(topic, retained.get(topic)); cb?.(null); },
             publish(topic, p, o) { if (o?.retain) retained.set(topic, p); deliver(topic, p); },
             end() {},
         };
@@ -97,12 +98,37 @@ console.log('Two desks and one lobby, through the relay');
 
     const c2 = await deskB.claimRoom('Lounge');
     check('a host can move to another lobby', c2.ok && deskB.room.room === 'lounge');
+
+    // A desk whose clock runs 31 minutes fast sees the holder as silent; nobody follows it
+    const fast = new LiveMixHost(() => [], { storage: store(), now: () => now + 31 * MIN, connect: async () => broker(), isPlaying: () => true, wait: settle });
+    playingB = true; await deskB.update(true); await settle();
+    await fast.claimRoom('Lounge');
+    await settle();
+    check('a desk with a fast clock is not obeyed: the holder keeps the lobby', deskB.room?.room === 'lounge');
+}
+
+console.log('A desk that cannot reach the relays does not claim');
+{
+    const sent = [];
+    const offline = () => ({ connected: false, on() {}, subscribe() {}, publish(t, p, o) { sent.push({ t, o }); } });
+    const desk = new LiveMixHost(() => [], { storage: { getItem: () => null, setItem() {} }, now: () => t0, connect: async () => offline(), wait: () => new Promise((r) => setTimeout(r, 20)) });
+    const r = await desk.claimRoom('Main Stage');
+    check('no relay connected: refused as offline, not taken as free', !r.ok && r.why === 'offline' && desk.room === null);
+    const lobbyTopic = await roomTopic('main-stage');
+    check('and nothing is sent to the lobby', !sent.some((x) => x.t === lobbyTopic));
+    let n = 0;
+    const mixed = () => (n++ === 0
+        ? { connected: true, on() {}, subscribe() { /* never acknowledges */ }, publish() {} }
+        : { connected: true, on() {}, subscribe(_t, _o, cb) { cb(null); }, publish() {} });
+    const desk2 = new LiveMixHost(() => [], { storage: { getItem: () => null, setItem() {} }, now: () => t0, connect: async () => mixed(), wait: () => new Promise((r) => setTimeout(r, 20)) });
+    check('one silent relay is fine while the other confirms', (await desk2.claimRoom('Main Stage')).ok);
 }
 
 console.log('The desk\'s lobby box');
 check('the box asks for a name when no lobby is held', lobbyHtml(null).includes('id="dj-lobby-name"') && lobbyHtml(null).includes('id="dj-lobby-claim"'));
 const box = lobbyHtml({ room: 'main', name: '<img src=x onerror=1>' }, 'https://z');
 check('when held it shows the link and LET IT GO, the name escaped', box.includes('https://z/mix.html#lobby=main') && box.includes('id="dj-lobby-release"') && !box.includes('<img') && box.includes('&lt;img'));
+check('offline says why it will not claim', lobbyStatus({ ok: false, why: 'offline' }).includes('not safe to claim'));
 check('a taken lobby says how long ago its host played', lobbyStatus({ ok: false, why: 'taken', minutes: 1, name: 'Main' }).includes('1 minute ago') && lobbyStatus({ ok: false, why: 'taken', minutes: 7, name: 'Main' }).includes('7 minutes ago'));
 
 console.log(`\n${passed} passed, ${failed} failed`);

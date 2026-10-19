@@ -62,6 +62,7 @@ export function lobbyStatus(r) {
     if (!r) return '';
     if (r.ok) return 'Claimed. Share the link: SHARE THE MIX now copies it too.';
     if (r.why === 'name') return 'Use letters or numbers for the name.';
+    if (r.why === 'offline') return 'Could not reach the relays, so it is not safe to claim: someone may be playing in it. Check the internet and try again.';
     if (r.why === 'taken') return `"${r.name}" is held: its host played ${r.minutes} ${r.minutes === 1 ? 'minute' : 'minutes'} ago. It frees up after 30 silent minutes.`;
     return 'Could not reach the relays right now. Try again in a minute.';
 }

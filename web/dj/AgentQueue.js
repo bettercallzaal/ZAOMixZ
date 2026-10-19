@@ -7,8 +7,9 @@
 // kind is off for every agent until then.
 //
 // Receipts: every proposal and every decision is logged with the agent, the time and the
-// outcome, so a show can be replayed and audited. They stay in this browser (the last 500) and
-// can be saved as a file. Where an approved item goes (chat, the stream) is a later gate:
+// outcome, so a show can be replayed and audited. They stay in this browser and can be saved
+// as a file. Refusals are kept apart, one line per agent and reason with a count, so an agent
+// sending junk cannot push the DJ's decisions out of the log. Where an approved item goes (chat, the stream) is a later gate:
 // today approving only records it.
 //
 // Pure apart from storage, which is injected: see AgentQueue.test.mjs.
@@ -21,7 +22,9 @@ export const EXPIRE_MS = 10 * 60 * 1000;    // undecided this long: expired
 export const PENDING_PER_AGENT = 3;         // drafts one agent may have waiting at once
 export const PENDING_MAX = 20;
 export const RECEIPTS_KEY = 'mixz-agent-receipts';
-export const RECEIPTS_MAX = 500;
+export const RECEIPTS_MAX = 1000;           // decisions and drafts
+export const REFUSALS_KEY = 'mixz-agent-refusals';
+export const REFUSALS_MAX = 200;            // lines of refusals, each counting its repeats
 
 // A draft from an agent: { kind, text } or null. Plain text only, one line of whitespace.
 export function cleanProposal(raw) {
@@ -34,12 +37,25 @@ export class ApprovalQueue {
     constructor({ storage = globalThis.localStorage, now = () => Date.now() } = {}) {
         Object.assign(this, { storage, now });
         this.pending = [];   // { pid, agentId, agent, kind, text, at }
-        this.receipts = this._load();
+        this.receipts = this._load(RECEIPTS_KEY, RECEIPTS_MAX);
+        this.refusals = this._load(REFUSALS_KEY, REFUSALS_MAX);   // { agentId, agent, kind, reason, count, first, last }
         this._n = 0;
     }
 
-    _load() { try { const r = JSON.parse(this.storage?.getItem(RECEIPTS_KEY) || '[]'); return Array.isArray(r) ? r.slice(-RECEIPTS_MAX) : []; } catch (e) { return []; } }
+    _load(key, max) { try { const r = JSON.parse(this.storage?.getItem(key) || '[]'); return Array.isArray(r) ? r.slice(-max) : []; } catch (e) { return []; } }
     _save() { try { this.storage?.setItem(RECEIPTS_KEY, JSON.stringify(this.receipts.slice(-RECEIPTS_MAX))); } catch (e) { /* no storage */ } }
+    _saveRefusals() { try { this.storage?.setItem(REFUSALS_KEY, JSON.stringify(this.refusals.slice(-REFUSALS_MAX))); } catch (e) { /* no storage */ } }
+
+    // A refusal: the same agent refused for the same reason again adds to one line's count.
+    _refusal(who, kind, reason) {
+        const now = this.now();
+        let line = this.refusals.find((r) => r.agentId === who.agentId && r.reason === reason && r.kind === (kind || null));
+        if (line) { line.count += 1; line.last = now; this.refusals = [...this.refusals.filter((r) => r !== line), line]; }
+        else { line = { agentId: who.agentId, agent: who.agent, kind: kind || null, reason, count: 1, first: now, last: now }; this.refusals.push(line); }
+        if (this.refusals.length > REFUSALS_MAX) this.refusals = this.refusals.slice(-REFUSALS_MAX);
+        this._saveRefusals();
+        return line;
+    }
 
     _receipt(item, outcome, extra = {}) {
         const r = { at: this.now(), pid: item.pid || null, agentId: item.agentId, agent: item.agent, kind: item.kind || null, text: item.text || '', outcome, ...extra };
@@ -54,8 +70,9 @@ export class ApprovalQueue {
     propose(agent, raw, { muted = false } = {}) {
         const who = { agentId: agent.id, agent: agent.name };
         const p = cleanProposal(raw);
-        if (!p) { this._receipt({ ...who, kind: raw?.kind, text: '' }, 'refused', { reason: 'not a draft' }); return { ok: false, reason: 'not a draft' }; }
-        const refuse = (reason) => { this._receipt({ ...who, ...p }, 'refused', { reason }); return { ok: false, reason }; };
+        const kind = PROPOSAL_KINDS.includes(raw?.kind) ? raw.kind : null;
+        if (!p) { this._refusal(who, kind, 'not a draft'); return { ok: false, reason: 'not a draft' }; }
+        const refuse = (reason) => { this._refusal(who, p.kind, reason); return { ok: false, reason }; };
         if (muted) return refuse('muted');
         if (!agent.perms?.[p.kind]) return refuse('not granted');
         if (this.pending.filter((x) => x.agentId === agent.id).length >= PENDING_PER_AGENT) return refuse('too many waiting');
@@ -66,13 +83,15 @@ export class ApprovalQueue {
         return { ok: true, item };
     }
 
-    // The DJ's decision. Approving with changed text is 'edited'. Null if it is not waiting.
+    // The DJ's decision. Approving with changed text is 'edited'. Null if it is not waiting, or
+    // if the DJ emptied the text: an empty draft is not approved as the original.
     decide(pid, approve, { text = null } = {}) {
         const i = this.pending.findIndex((x) => x.pid === pid);
         if (i < 0) return null;
+        const edited = approve && text != null ? cleanProposal({ kind: this.pending[i].kind, text }) : null;
+        if (approve && text != null && !edited) return null;
         const [item] = this.pending.splice(i, 1);
         if (!approve) return this._receipt(item, 'declined');
-        const edited = text != null ? cleanProposal({ kind: item.kind, text }) : null;
         if (edited && edited.text !== item.text) return this._receipt(item, 'edited', { published: edited.text });
         return this._receipt(item, 'approved', { published: item.text });
     }
@@ -93,11 +112,11 @@ export class ApprovalQueue {
     }
 
     // The receipts as a file, for replaying or auditing a show.
-    exportText() { return JSON.stringify({ v: 1, exported: this.now(), receipts: this.receipts }, null, 2); }
+    exportText() { return JSON.stringify({ v: 1, exported: this.now(), receipts: this.receipts, refusals: this.refusals }, null, 2); }
 }
 
 // The DJ's queue panel. Everything an agent wrote is escaped.
-export function queueHtml(pending, receipts, now = Date.now()) {
+export function queueHtml(pending, receipts, now = Date.now(), refusals = []) {
     const mins = (t) => Math.max(0, Math.round((now - t) / 60000));
     const waiting = pending.length
         ? pending.map((x) => `<li class="agent-draft" data-pid="${esc(x.pid)}">`
@@ -106,6 +125,8 @@ export function queueHtml(pending, receipts, now = Date.now()) {
             + `<div class="agent-draft-row"><button type="button" data-approve="${esc(x.pid)}">APPROVE</button><button type="button" data-decline="${esc(x.pid)}">DECLINE</button></div></li>`).join('')
         : '<li class="agent-empty">Nothing waiting.</li>';
     const log = receipts.slice(-20).reverse().map((r) => `<li class="agent-receipt"><small>${new Date(r.at).toLocaleTimeString()}</small> <b>${esc(r.agent)}</b> ${esc(r.kind || '')}: ${esc(r.outcome)}${r.reason ? ` (${esc(r.reason)})` : ''}${r.text ? ` <q>${esc(r.text.slice(0, 80))}</q>` : ''}</li>`).join('');
+    const refused = refusals.slice(-5).reverse().map((r) => `<li class="agent-receipt"><b>${esc(r.agent)}</b> refused ${r.count} ${r.count === 1 ? 'time' : 'times'}: ${esc(r.reason)}${r.kind ? ` (${esc(r.kind)})` : ''}</li>`).join('');
     return `<div class="agent-queue-title">AGENT DRAFTS: nothing goes out until you approve it</div><ul class="agent-drafts">${waiting}</ul>`
-        + `<div class="agent-queue-title">RECEIPTS <button type="button" id="agents-receipts-save">SAVE AS FILE</button></div><ul class="agent-receipts">${log || '<li class="agent-empty">No receipts yet.</li>'}</ul>`;
+        + `<div class="agent-queue-title">RECEIPTS <button type="button" id="agents-receipts-save">SAVE AS FILE</button></div><ul class="agent-receipts">${log || '<li class="agent-empty">No receipts yet.</li>'}</ul>`
+        + (refused ? `<div class="agent-queue-title">REFUSED</div><ul class="agent-receipts">${refused}</ul>` : '');
 }

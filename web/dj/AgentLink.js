@@ -207,8 +207,8 @@ export class AgentHost {
         const n = this.queue.pending.length;
         btn.style.display = n || this.connectedCount() || this.muted ? '' : 'none';
         btn.textContent = `AGENT DRAFTS (${n})`;
-        const sig = `${n}|${this.queue.receipts.length}|${this.queue.pending.map((x) => x.pid).join()}`;
-        if (panel.dataset.sig !== sig && !panel.contains?.(doc.activeElement)) { panel.dataset.sig = sig; panel.innerHTML = queueHtml(this.queue.pending, this.queue.receipts); }
+        const sig = `${n}|${this.queue.receipts.length}|${this.queue.refusals.reduce((t, r) => t + r.count, 0)}|${this.queue.pending.map((x) => x.pid).join()}`;
+        if (panel.dataset.sig !== sig && !panel.contains?.(doc.activeElement)) { panel.dataset.sig = sig; panel.innerHTML = queueHtml(this.queue.pending, this.queue.receipts, Date.now(), this.queue.refusals); }
         if (!btn.dataset.wired) {
             btn.dataset.wired = '1';
             btn.addEventListener('click', () => panel.classList.toggle('hidden'));

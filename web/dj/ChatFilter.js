@@ -5,21 +5,37 @@
 // passes and matches one playable track well. A chat request then waits for a person to tap
 // PLAY NEXT: it never plays by itself (RequestLine.autoPick). docs/STREAM-EVENTS.md.
 //
+// The text a line keeps is plain text, never markup: whoever shows a chat.message escapes it.
+// Blocked words match whole words after the clean-up; lookalike letters and words spelled
+// out with spaces can still slip past, so the list is a first line, not the last.
+//
 // Pure: see ChatFilter.test.mjs.
 
 export const CHAT_MAX = 200;           // characters of one chat line kept
 export const CHAT_MAX_WAITING = 8;     // chat requests on the board at once, so phones always get a turn
 export const QUERY_MIN = 3;            // shorter than this matches too much
 
-const LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|io|xyz|gg|tv|ly|me|co|app|link|site)\b)/i;
-// Control characters and the invisible ones used to dodge filters
-const HIDDEN = /[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁤﻿]/g;
+// A link, in any of the ways chat writes one:
+//   a scheme ("https://", or a mangled "hxxp://"), "www.", any name.tld written without
+//   spaces ("evil.ai", "evil.dev/x"), and a dot spaced or spelled out before a common
+//   ending ("example . com", "example[.]com", "example dot com", "example。com").
+// Prose keeps a space after a full stop, so "feat. Drake" and "e.g." pass.
+const SCHEME = /\b[a-z][a-z0-9+.-]{1,9}:\/\//i;
+const BARE = /(^|[^a-z0-9@-])(www\.|[a-z0-9-]{2,}(\.[a-z0-9-]+)*\.[a-z]{2,}(?![a-z0-9]))/i;
+const ENDINGS = 'com|net|org|io|ai|dev|live|info|xyz|gg|tv|ly|me|co|app|link|site|online|shop|store|club|top|pro|biz|us|uk|ru|cn|de';
+const SPACED = new RegExp(`[a-z0-9-]{2,}\\s*(\\.|\\[\\s*\\.\\s*\\]|\\(\\s*\\.\\s*\\)|\\{\\s*\\.\\s*\\}|\\bdot\\b)\\s*(${ENDINGS})(?![a-z0-9])`, 'i');
+const DOTS = /[\u3002\uff0e\uff61\u2024\u2027\u00b7\u2219]/g; // other full stops people use for "."
+const isLink = (t) => { const d = t.replace(DOTS, '.'); return SCHEME.test(d) || BARE.test(d) || SPACED.test(d); };
+// Control characters and the invisible ones used to dodge filters, the soft hyphen, the
+// combining grapheme joiner and the Mongolian vowel separator included
+const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g;
 
 // { ok, text, reason }. `blocked`: words the DJ never wants on the stream.
 export function moderate(raw, { blocked = [] } = {}) {
-    const text = String(raw ?? '').replace(HIDDEN, '').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX);
+    // NFKC first: fullwidth and other compatibility letters become plain ones
+    const text = String(raw ?? '').normalize('NFKC').replace(HIDDEN, '').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX);
     if (!text) return { ok: false, text: '', reason: 'empty' };
-    if (LINK.test(text)) return { ok: false, text, reason: 'link' };
+    if (isLink(text)) return { ok: false, text, reason: 'link' };
     const lower = text.toLowerCase();
     const hit = blocked.map((w) => String(w).trim().toLowerCase()).filter(Boolean)
         .find((w) => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`).test(lower));
@@ -27,7 +43,7 @@ export function moderate(raw, { blocked = [] } = {}) {
     return { ok: true, text, reason: '' };
 }
 
-const fold = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const fold = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 // The one track a chat request means, or null when nothing matches well enough to be sure.
 // "rude boy", "Rude Boy - IMan Afrikah" and "iman afrikah rude boy" all find Rude Boy.

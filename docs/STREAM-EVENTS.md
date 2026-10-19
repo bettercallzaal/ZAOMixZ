@@ -25,6 +25,7 @@ So today there is one real pipe off the machine, the RemoteLink relay. There is 
 2. **No credentials in events.** No relay token, API key, OAuth token, device id or call address ever goes into an event. An agent joins the relay with a viewer link, the same way a listener's phone does.
 3. **Only what the stream already shows.** Song, artist, licence holder, what the mix is doing, request titles and the first names callers typed. Nothing else.
 4. **Chat is moderated before it is an event.** Chat goes out only after the desk's filter has passed it.
+5. **Every text field is plain text.** A title, a name or a chat line is never markup: whatever shows an event escapes it, the same way the desk does (`web/dj/Html.js`).
 
 ### Envelope
 Every event has the same shape:

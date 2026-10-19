@@ -378,10 +378,6 @@ self.addEventListener('message', (event) => {
             });
             break;
 
-        case 'SKIP_WAITING':
-            self.skipWaiting();
-            break;
-
         case 'GET_CACHE_STATUS':
             caches.open(CACHE_NAME).then(async (cache) => {
                 const keys = await cache.keys();

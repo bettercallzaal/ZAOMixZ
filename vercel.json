@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/stamp-sw.mjs",
+  "buildCommand": "node scripts/stamp-sw.mjs --write",
   "outputDirectory": "web",
   "rewrites": [
     { "source": "/feedback", "destination": "/feedback.html" },

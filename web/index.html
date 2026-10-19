@@ -1395,30 +1395,8 @@
                 // Check for updates periodically
                 setInterval(() => reg.update(), 60 * 60 * 1000); // hourly
 
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New version available — show update banner
-                            const banner = document.createElement('div');
-                            banner.className = 'sw-update-banner';
-                            banner.innerHTML = '<span>New version available</span><button id="sw-update-btn">UPDATE</button><button id="sw-dismiss-btn">LATER</button>';
-                            document.body.appendChild(banner);
-                            requestAnimationFrame(() => banner.classList.add('show'));
-
-                            document.getElementById('sw-update-btn')?.addEventListener('click', () => {
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                banner.remove();
-                            });
-                            document.getElementById('sw-dismiss-btn')?.addEventListener('click', () => {
-                                banner.classList.remove('show');
-                                setTimeout(() => banner.remove(), 400);
-                            });
-                        }
-                    });
-                });
-
-                // A new version took over: offer a reload, never take one (it would stop a set).
+                // A new version took over (sw.js skips waiting on install, so this is the only
+                // update signal): offer a reload, never take one (it would stop a set).
                 navigator.serviceWorker.addEventListener('message', (e) => {
                     if (e.data?.type === 'SW_UPDATED') {
                         import('/dj/SwUpdate.js').then((m) => m.swUpdatePrompt(document, {

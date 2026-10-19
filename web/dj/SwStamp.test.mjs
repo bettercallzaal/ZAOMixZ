@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { MARKER, hashTree, stampSource } from '../../scripts/stamp-sw.mjs';
+import { MARKER, hashTree, stampSource, run, USAGE } from '../../scripts/stamp-sw.mjs';
 
 let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
@@ -22,7 +22,7 @@ console.log('The repo leaves the version to the deploy');
 {
     check("sw.js has the 'dev' line exactly once", sw.split(MARKER).length - 1 === 1);
     check('no hand-set number is left', !/const CACHE_VERSION = \d+/.test(sw));
-    check('the deploy runs the stamp', vercel.buildCommand === 'node scripts/stamp-sw.mjs');
+    check('the deploy runs the stamp, with --write', vercel.buildCommand === 'node scripts/stamp-sw.mjs --write');
     check('and serves web/', vercel.outputDirectory === 'web');
     check('unstamped, the fetch handler steps aside', /if \(CACHE_VERSION === 'dev'\) return;/.test(sw));
 }
@@ -60,6 +60,32 @@ console.log('The hash follows the web files');
         check('putting the files back restores it', hashTree(dir) === h1);
         writeFileSync(join(dir, 'sw.js'), MARKER + '\n// a change to the worker itself');
         check('a change to sw.js changes it', hashTree(dir) !== h1);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+console.log('Run by hand, it writes nothing');
+{
+    const dir = mkdtempSync(join(tmpdir(), 'swstamp-run-'));
+    try {
+        writeFileSync(join(dir, 'index.html'), '<p>a</p>');
+        writeFileSync(join(dir, 'sw.js'), MARKER);
+        const lines = [];
+        const go = (argv, env = {}) => { lines.length = 0; return run(argv, env, dir, (l) => lines.push(l)); };
+        const swNow = () => readFileSync(join(dir, 'sw.js'), 'utf8');
+        check('no flags: exit 0', go([]) === 0);
+        check('and sw.js still says dev', swNow() === MARKER);
+        check('it prints the version it would write', /would be [0-9a-f]{12}; not written/.test(lines[0]));
+        check('--help prints usage', go(['--help']) === 0 && lines[0] === USAGE && swNow() === MARKER);
+        check('-h too', go(['-h']) === 0 && swNow() === MARKER);
+        check('an unknown option is refused and writes nothing', go(['--bogus']) === 2 && swNow() === MARKER);
+        check('--write with an unknown option writes nothing', go(['--write', '--bogus']) === 2 && swNow() === MARKER);
+        const want = hashTree(dir);
+        check('--write stamps it', go(['--write']) === 0 && swNow() === `const CACHE_VERSION = '${want}';`);
+        writeFileSync(join(dir, 'sw.js'), MARKER);
+        check('VERCEL set (the deploy) stamps it too', go([], { VERCEL: '1' }) === 0 && swNow() === `const CACHE_VERSION = '${want}';`);
+        check('a second stamp is refused', throws(() => go(['--write'])));
     } finally {
         rmSync(dir, { recursive: true, force: true });
     }

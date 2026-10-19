@@ -90,6 +90,12 @@ console.log('The desk page');
     check('and no reload of its own', !/^\s*window\.location\.reload\(\);/m.test(handler));
     check('it reads both decks for playing', handler.includes('d?.A?.isPlaying || d?.B?.isPlaying'));
     check('SwUpdate.js is in the offline shell', sw.includes("'/dj/SwUpdate.js'"));
+    // sw.js skips waiting on install, so the old waiting-worker banner could only show next to
+    // this prompt, and its UPDATE asked for a skip that had already happened.
+    check('the old waiting-worker banner is gone', !html.includes("'updatefound'") && !html.includes('sw-update-btn'));
+    check('so is the SKIP_WAITING message it sent', !html.includes('SKIP_WAITING') && !sw.includes("'SKIP_WAITING'"));
+    check('the worker still skips waiting on install', /self\.skipWaiting\(\);/.test(sw));
+    check('index.html builds no update banner of its own',(html.match(/sw-update-banner/g) || []).length === 0);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

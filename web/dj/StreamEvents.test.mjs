@@ -99,5 +99,14 @@ console.log('Stream events: handovers');
     check('an unknown event type is not sent', ev.emit('deck.load', { anything: 1 }) === null && events().length === 2);
 }
 
+console.log('Stream events: advice said off air is sent at GO LIVE');
+{
+    const { dj, ev, events } = desk();
+    ev.emit('director.advice', { next: { title: 'Next Up', why: 'fits' }, alts: [] });
+    check('off air the advice goes nowhere', events().length === 0);
+    dj.broadcast.isLive = true; ev.tick();
+    check('at GO LIVE the latest advice goes out', events().some((e) => e.type === 'director.advice' && e.data.next.title === 'Next Up'));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

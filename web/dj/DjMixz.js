@@ -10,6 +10,7 @@
 
 import { keyRelation } from './SwitchPad.js';
 import { advise } from './FlowDirector.js';
+import { adviceData } from './StreamEvents.js';
 import { esc } from './Html.js';
 
 // Mood = the energy the room should feel, from the first track (x = 0) to the last (x = 1).
@@ -331,6 +332,16 @@ export class DjMixz {
         return this.advice;
     }
 
+    // director.advice for the stream (docs/STREAM-EVENTS.md): only when the advice changes.
+    _announceAdvice(adv) {
+        if (!this.dj.streamEvents) return;   // nothing to tell yet; the first advice goes out once it is wired
+        const data = adviceData(adv);
+        const key = JSON.stringify(data);
+        if (key === this._adviceKey) return;
+        this._adviceKey = key;
+        try { this.dj.streamEvents?.emit?.('director.advice', data); } catch (e) { /* the stream is optional */ }
+    }
+
     // A person approved one of the director's other picks: it plays next instead. The song it
     // replaces moves back one slot rather than leaving the set. Refused during a handover.
     swapNext(track) {
@@ -536,6 +547,7 @@ export class DjMixz {
         const score = this.battle ? `<span class="djmixz-bar-score">ROUND ${this.round} <b>DJ MIXZ ${this.score.ai}</b> : <b>${this.score.human} LIVE DJ</b></span>` : '';
         const votes = this.battle && this._voteOpen ? `<span class="djmixz-bar-vote">Who took round ${this.round}?<button class="djmixz-bar-btn vote" data-act="vote-ai">DJ MIXZ</button><button class="djmixz-bar-btn vote" data-act="vote-human">LIVE DJ</button></span>` : '';
         const adv = this._advise();
+        this._announceAdvice(adv);
         const busy = this._busy();
         const why = adv ? `<span class="djmixz-bar-why">why: ${esc(adv.why)}</span>` : '';
         const swaps = adv && !busy ? adv.alts.map((a, i) => `<button class="djmixz-bar-btn swap${a.better ? ' better' : ''}" data-act="swap" data-i="${i}" title="${esc(a.reasons.join(', '))}">${a.better ? 'BETTER FIT: ' : 'OR: '}${esc(a.track.title)}</button>`).join('') : '';

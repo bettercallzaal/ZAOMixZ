@@ -138,5 +138,22 @@ check('the dead free relay is gone', !ICE_SERVERS.some(s => String(s.urls).inclu
     check('phone: the request form says the name is shown, next to the name field', at > 0 && notice > at && notice - at < 400 && /your name[^<]*show/i.test(html.slice(notice, notice + 200)));
 }
 
+// request.updated goes to the stream for a new request and for each change of status
+{
+    const sent = [];
+    const host = {
+        relay: { send() {} }, autoPlay: true, requests: new RequestQueue(), _renderRequests() {},
+        trackById: () => ({ id: 'au1', title: 'Asked For', artist: 'Y', source: 'audius', streamUrl: 'https://x' }),
+        dj: { decks: { A: { isPlaying: true, metadata: { metadata: { title: 'On Now', artist: 'X' } } }, B: { isPlaying: false } }, audioRouter: { _lastCrossfadePosition: 0 },
+            djMixz: { running: true, human: false, playNext: () => true }, streamEvents: { emit: (type, data) => sent.push({ type, data }) } },
+    };
+    host._tell = RemoteHost.prototype._tell; host._announce = RemoteHost.prototype._announce;
+    RemoteHost.prototype._request.call(host, { device: 'phone-secret-id' }, { a: 'request', id: 'au1', name: 'Ana', note: '' });
+    check('stream: a new request goes out as request.updated, waiting', sent.length === 1 && sent[0].type === 'request.updated' && sent[0].data.status === 'waiting' && sent[0].data.title === 'Asked For' && sent[0].data.name === 'Ana');
+    check('stream: it never carries the phone\'s device id', !JSON.stringify(sent).includes('phone-secret-id'));
+    RemoteHost.prototype._requestTick.call(host);
+    check('stream: going next is announced too', sent.some((e) => e.data.status === 'next'));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

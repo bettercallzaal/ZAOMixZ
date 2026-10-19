@@ -209,7 +209,7 @@ export function trackList(tracks, q = '', limit = 60) {
 
 export const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
 export const FRESH_MS = 30000;
-const MQTT_SRC = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
+export const MQTT_SRC = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
 const PEER_SRC = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 const QR_SRC = 'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';
 
@@ -401,8 +401,10 @@ export class RemoteHost {
         if (!cmd) return;
         if (phone.viewer && !VIEWER_OK.has(cmd.a)) return;
         if (cmd.a === 'share') {
-            const url = this.dj.setlist?.mixLink?.() || '';
-            this.relay.send({ t: 'mix', to: device, url, n: this.dj.setlist?.history?.length || 0 });
+            const send = (url) => this.relay.send({ t: 'mix', to: device, url, n: this.dj.setlist?.history?.length || 0 });
+            const live = this.dj.setlist?.liveLink?.();
+            if (live?.then) live.then((url) => send(url || this.dj.setlist?.mixLink?.() || '')).catch(() => send(this.dj.setlist?.mixLink?.() || ''));
+            else send(this.dj.setlist?.mixLink?.() || '');
             return;
         }
         if (cmd.a === 'tracks') {

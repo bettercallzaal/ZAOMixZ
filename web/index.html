@@ -1418,10 +1418,13 @@
                     });
                 });
 
-                // Listen for SW messages
+                // A new version took over: offer a reload, never take one (it would stop a set).
                 navigator.serviceWorker.addEventListener('message', (e) => {
-                    if (e.data.type === 'SW_UPDATED') {
-                        window.location.reload();
+                    if (e.data?.type === 'SW_UPDATED') {
+                        import('/dj/SwUpdate.js').then((m) => m.swUpdatePrompt(document, {
+                            playing: () => { const d = window._djPlayer?.decks; return !!(d?.A?.isPlaying || d?.B?.isPlaying); },
+                            reload: () => window.location.reload(),
+                        })).catch(() => {});
                     }
                 });
             }).catch(() => {});

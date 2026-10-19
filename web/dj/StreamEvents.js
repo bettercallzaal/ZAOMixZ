@@ -15,7 +15,7 @@
 import { cleanTitle, liveDeck, songPage } from './NowPlaying.js';
 
 export const EVENT_VERSION = 1;
-export const OUT_TYPES = ['track.changed', 'transition.started', 'transition.finished', 'stream.health', 'request.updated', 'chat.message', 'director.advice'];
+export const OUT_TYPES = ['track.changed', 'transition.started', 'transition.finished', 'stream.health', 'request.updated', 'chat.message', 'director.advice', 'agent.post'];
 export const HEALTH_EVERY_MS = 5000;
 // Said once and true until replaced, so sent again at GO LIVE (it may have been said off air)
 export const REPLAY = ['director.advice'];

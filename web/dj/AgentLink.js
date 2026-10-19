@@ -22,6 +22,7 @@
 import { newToken, validToken, Relay } from './RemoteLink.js';
 import { OUT_TYPES } from './StreamEvents.js';
 import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
+import { agentPostData } from './AgentPost.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
@@ -74,8 +75,9 @@ export const forAgents = (env) => !!env && env.v === 1 && OUT_TYPES.includes(env
 
 export class AgentHost {
     // RelayClass and storage are injectable for tests.
-    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null } = {}) {
-        Object.assign(this, { RelayClass, storage, onChange });
+    // publish(type, data): where an approved draft goes out, as a stream event (StreamEvents.emit).
+    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null } = {}) {
+        Object.assign(this, { RelayClass, storage, onChange, publish });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
         this.queue = new ApprovalQueue({ storage });   // drafts waiting for the DJ, and the receipts
@@ -199,6 +201,15 @@ export class AgentHost {
         this.renderQueue(doc);
     }
 
+    // The DJ's decision on a draft. An approval goes out as agent.post (gate 4): the overlay
+    // shows it under its own AI label. Nothing goes out while the agents are muted.
+    decide(pid, approve, opts = {}) {
+        const r = this.queue.decide(pid, approve, opts);
+        const post = agentPostData(r);
+        if (post && !this.muted) this.publish?.('agent.post', post);
+        return r;
+    }
+
     // The AGENT DRAFTS button and panel: shown with the mute button, or while drafts wait.
     renderQueue(doc = globalThis.document) {
         const btn = doc?.getElementById?.('agents-queue');
@@ -214,8 +225,8 @@ export class AgentHost {
             btn.addEventListener('click', () => panel.classList.toggle('hidden'));
             panel.addEventListener('click', (e) => {
                 const a = e.target?.dataset?.approve, d = e.target?.dataset?.decline;
-                if (a) { const text = e.target.closest('li')?.querySelector('textarea')?.value; this.queue.decide(a, true, { text }); }
-                else if (d) this.queue.decide(d, false);
+                if (a) { const text = e.target.closest('li')?.querySelector('textarea')?.value; this.decide(a, true, { text }); }
+                else if (d) this.decide(d, false);
                 else if (e.target?.id === 'agents-receipts-save') this._saveReceipts(doc);
                 else return;
                 panel.dataset.sig = '';

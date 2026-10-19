@@ -20,6 +20,11 @@
 // left in the running DJ MixZ set ('tracks') and pick one ('recommend'). The pick shows in the
 // DJ MixZ bar under the agent's name and plays next only when the DJ taps it.
 //
+// Gate 7, no credentials (AgentSecrets.js): every message for an agent leaves through one
+// place, AgentHost._send, and one that holds a secret the desk keeps (the phone link's token,
+// an agent's key, the Spotify or Twitch tokens, the YouTube key) or anything shaped like a
+// credential is held back, with a refusal line, instead of sent.
+//
 // Nothing in the app makes an agent yet: no outside agent connects until every gate exists
 // and Zaal says yes. The top half is pure and runs under node: see AgentLink.test.mjs.
 
@@ -29,6 +34,7 @@ import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
 import { agentPostData } from './AgentPost.js';
 import { CHAT_BLOCK_KEY } from './Settings.js';
 import { PickBoard, PICK_KIND, pickList, pickId } from './AgentPick.js';
+import { leak, storedSecrets } from './AgentSecrets.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
@@ -99,8 +105,9 @@ export class AgentHost {
     // RelayClass and storage are injectable for tests.
     // publish(type, data): where an approved draft goes out, as a stream event (StreamEvents.emit).
     // director: where picks come from and go (deskDirector). Without one, no set is running.
-    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null, now = () => Date.now(), director = null } = {}) {
-        Object.assign(this, { RelayClass, storage, onChange, publish, now, director });
+    // secrets: () => the secrets the desk holds only in memory (AgentSecrets.deskSecrets).
+    constructor({ RelayClass = Relay, storage = globalThis.localStorage, session = globalThis.sessionStorage, onChange = null, publish = null, now = () => Date.now(), director = null, secrets = null } = {}) {
+        Object.assign(this, { RelayClass, storage, session, onChange, publish, now, director, secrets });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
         this.queue = new ApprovalQueue({ storage, now });   // drafts waiting for the DJ, and the receipts
@@ -120,7 +127,8 @@ export class AgentHost {
         this.muted = !!on;
         try { this.storage?.setItem(MUTED_KEY, this.muted ? 'on' : 'off'); } catch (e) { /* no storage */ }
         if (this.muted) { this.queue.dropAll('muted'); this.picks.dropAll('muted'); this.director?.refresh?.(); }
-        for (const l of this.links.values()) l.relay.send({ t: 'muted', on: this.muted });
+        const keep = this._secretsNow();
+        for (const id of this.links.keys()) this._send(id, { t: 'muted', on: this.muted }, keep);
         this.onChange?.();
     }
 
@@ -201,29 +209,53 @@ export class AgentHost {
         if (msg.t === 'propose') {
             // Every draft leaves a receipt, a refused one too (muted, not granted, too many)
             const r = this.queue.propose(agent, msg, { muted: this.muted, blocked: this._blocked() });
-            link.relay.send({ t: 'proposal', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
+            this._send(agent.id, { t: 'proposal', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
             this.onChange?.();
             return;
         }
         if (msg.t === 'recommend') {
             const r = this.picks.recommend(agent, msg, { muted: this.muted, blocked: this._blocked(), pickable: this._pickable() });
-            link.relay.send({ t: 'pick', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
+            this._send(agent.id, { t: 'pick', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
             if (r.ok) this.director?.refresh?.();
             this.onChange?.();
             return;
         }
-        if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
+        if (this.muted) { this._send(agent.id, { t: 'muted', on: true }); this.onChange?.(); return; }
         if (msg.t === 'tracks') {
             const fresh = this.agents.find((a) => a.id === agent.id);
-            if (!fresh?.perms?.[PICK_KIND]) { link.relay.send({ t: 'tracks', list: [], reason: 'not granted' }); return; }
+            if (!fresh?.perms?.[PICK_KIND]) { this._send(agent.id, { t: 'tracks', list: [], reason: 'not granted' }); return; }
             const now = this.now();
-            if (link.lastTracks != null && now - link.lastTracks < TRACKS_RATE_MS) { link.relay.send({ t: 'tracks', list: [], reason: 'too fast' }); return; }
+            if (link.lastTracks != null && now - link.lastTracks < TRACKS_RATE_MS) { this._send(agent.id, { t: 'tracks', list: [], reason: 'too fast' }); return; }
             link.lastTracks = now;
-            link.relay.send({ t: 'tracks', list: pickList(this._pickable()) });
+            this._send(agent.id, { t: 'tracks', list: pickList(this._pickable()) });
             return;
         }
-        if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
-        else if (msg.t === 'ping') link.relay.send({ t: 'pong', n: msg.n });
+        if (msg.t === 'hello') { link.hello = true; this._send(agent.id, { t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
+        else if (msg.t === 'ping') this._send(agent.id, { t: 'pong', n: msg.n });
+    }
+
+    // Every secret the desk holds right now: what the browser keeps, every agent's own token,
+    // and what the desk holds in memory. Null when the in-memory list cannot be read.
+    _secretsNow() {
+        let extra;
+        try { extra = this.secrets ? this.secrets() : []; } catch (e) { return null; }
+        return [...storedSecrets(this.storage, this.session), ...this.agents.map((a) => a.token), ...(Array.isArray(extra) ? extra : [])];
+    }
+
+    // The one way out to an agent (gate 7). A message that holds a secret, or anything shaped
+    // like a credential, is held back and counted as a refusal; so is everything while the
+    // secrets cannot be read. The refusal says why, never what the secret was.
+    _send(id, msg, secrets = this._secretsNow()) {
+        const l = this.links.get(id);
+        if (!l) return false;
+        const why = secrets ? leak(msg, secrets) : 'secrets unreadable';
+        if (why) {
+            const a = this.agents.find((x) => x.id === id);
+            this.queue._refusal({ agentId: id, agent: a?.name || 'Agent' }, 'outbound', `held: ${why}`);
+            return false;
+        }
+        l.relay.send(msg);
+        return true;
     }
 
     _pickable() { try { return this.director?.pickable?.() || []; } catch (e) { return []; } }
@@ -256,7 +288,8 @@ export class AgentHost {
     sendEvent(env) {
         if (this.muted || !forAgents(env)) return;
         // Only to an agent that said hello on this connection, not one that only pings
-        for (const [id, l] of this.links) if (l.hello && this.connected(id)) l.relay.send({ t: 'ev', ev: env });
+        const keep = this._secretsNow();
+        for (const [id, l] of this.links) if (l.hello && this.connected(id)) this._send(id, { t: 'ev', ev: env }, keep);
     }
 
     // The desk's MUTE ALL AGENTS button: always there while an agent is connected or the agents

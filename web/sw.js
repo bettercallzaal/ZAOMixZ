@@ -63,6 +63,7 @@ const APP_SHELL = [
     '/dj/AgentQueue.js',
     '/dj/AgentPost.js',
     '/dj/AgentPick.js',
+    '/dj/AgentSecrets.js',
     '/dj/SwUpdate.js',
     '/dj/AgentLink.js',
     '/dj/Html.js',

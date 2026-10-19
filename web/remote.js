@@ -185,6 +185,10 @@ function draw() {
     $('air-pill').textContent = state.live ? 'ON AIR' : 'OFF AIR';
     $('air-pill').classList.toggle('on', !!state.live);
     $('live-btn').textContent = state.live ? 'END LIVE' : 'GO LIVE';
+    // MUTE ALL AGENTS: shown while an agent is connected or the agents are muted
+    const ag = state.agents;
+    $('agents-btn').style.display = ag && (ag.n || ag.muted) ? '' : 'none';
+    $('agents-btn').textContent = ag?.muted ? 'UNMUTE AGENTS' : `MUTE AGENTS (${ag?.n || 0})`;
     $('nav-stream').classList.toggle('air', !!state.live);
     $('mixz-pill').textContent = !m.running ? 'DJ MIXZ OFF' : m.human ? 'YOU HAVE THE DECKS' : `DJ MIXZ ${MOOD_NAMES[m.mood] || ''}${m.endless ? ' · ENDLESS' : ''}`;
     $('st-stop').classList.toggle('hidden', !m.running);
@@ -297,6 +301,7 @@ $('st-skip').onclick = () => send('skip');
 $('mixz-take').onclick = () => send('takeover');
 $('mixz-back').onclick = () => send('handback');
 $('live-btn').onclick = () => send('live', { on: !state?.live });
+$('agents-btn').onclick = () => send('agentsmute', { on: !state?.agents?.muted });
 $('st-share').onclick = () => { $('st-sharebox').classList.remove('hidden'); $('st-sharebox').textContent = 'Asking the desk'; send('share'); };
 let searchTimer = null;
 $('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(askTracks, 300); });

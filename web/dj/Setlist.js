@@ -2,6 +2,7 @@
 // Supports export to TXT, JSON, M3U, CSV, PNG image, clipboard, and shareable URL
 
 import { buildMix, mixUrl } from './MixPage.js';
+import { LiveMixHost } from './LiveMix.js';
 import { esc } from './Html.js';
 
 export class Setlist {
@@ -165,6 +166,7 @@ export class Setlist {
 
         this._renderHistory();
         this._renderStats();
+        this.live?.update();   // the live mix link shows the new song
     }
 
     /**
@@ -545,7 +547,27 @@ export class Setlist {
         return mixUrl(window.location.origin, buildMix(this.history, { name, dj }));
     }
 
-    shareMix() {
+    // The live mix link: one link for the whole set, posted at the start, that shows every song
+    // as it plays and then holds the finished mix (LiveMix.js). Made on first use.
+    async liveLink() {
+        try {
+            this.live ||= new LiveMixHost(() => this.history);
+            return await this.live.link(window.location.origin);
+        } catch (e) {
+            console.warn('[Setlist] live mix link unavailable, sharing a snapshot:', e);
+            this.live = null;
+            return '';
+        }
+    }
+
+    async shareMix() {
+        const live = await this.liveLink();
+        if (live) {
+            const n = this.history.length;
+            const said = n ? `${n} ${n === 1 ? 'song' : 'songs'} so far, and every song after this` : 'every song from the first one';
+            navigator.clipboard?.writeText(live).then(() => this._showToast(`Live mix link copied: it shows ${said}, and keeps the finished mix. Post it now or at the end.`)).catch(() => prompt('Live link to this mix:', live));
+            return live;
+        }
         if (this.history.length === 0) { this._showToast('Nothing to share yet. Play a track first.'); return null; }
         let name = '';
         try { name = localStorage.getItem('mixz-mix-name') || ''; } catch (e) { /* no storage */ }

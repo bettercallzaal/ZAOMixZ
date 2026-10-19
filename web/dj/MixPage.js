@@ -34,10 +34,11 @@ export function mixEntry(h, sessionStart) {
 // A song played for under 20 seconds was skipped or only loaded: it is not part of the mix.
 // The last one stays, since it may still be playing.
 export const SKIPPED_UNDER = 20;
-export function buildMix(history, { name = '', dj = '', date = new Date() } = {}) {
+// `start` (ms) times every song from a fixed moment, for a live mix that spans reloads (LiveMix.js).
+export function buildMix(history, { name = '', dj = '', date = new Date(), start: from = null } = {}) {
     const all = (history || []).filter((h) => h && h.title);
     const list = all.filter((h, i) => i === all.length - 1 || (h.durationPlayed || 0) >= SKIPPED_UNDER);
-    const start = list.length ? Math.min(...list.map((h) => h.startTime || Infinity)) : date.getTime();
+    const start = Number.isFinite(from) ? from : list.length ? Math.min(...list.map((h) => h.startTime || Infinity)) : date.getTime();
     return {
         v: MIX_VERSION,
         n: String(name || '').slice(0, 80),

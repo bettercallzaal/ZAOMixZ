@@ -12,6 +12,7 @@ const APP_SHELL = [
     '/index.html',
     '/mix.html',
     '/dj/MixPage.js',
+    '/dj/LiveMix.js',
     '/dj/NowPlaying.js',
     '/dj/LibrarySheet.js',
     '/dj/PlayAlong.js',

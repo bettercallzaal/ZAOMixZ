@@ -20,6 +20,7 @@
         .sub { color: var(--muted); font-size: .95rem; }
         .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
         .chip { font-size: .72rem; letter-spacing: .1em; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+        .chip.live { color: var(--play); border-color: rgba(43,255,154,.5); }
         .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
         button { font: inherit; color: var(--text); background: var(--hi); border: 1px solid var(--line); border-radius: 12px; padding: 0 18px; min-height: 48px; cursor: pointer; font-weight: 700; letter-spacing: .06em; }
         button:active { transform: scale(.98); }
@@ -76,64 +77,101 @@
 
     <script src="music-source.js"></script>
     <script type="module">
-        import { mixFromHash, resolveTracks, fmtTime, mixLength } from './dj/MixPage.js';
+        import { decodeMix, resolveTracks, fmtTime, mixLength } from './dj/MixPage.js';
+        import { parseMixHash, watchLive, LIVE_FOR_MS } from './dj/LiveMix.js';
         const $ = (id) => document.getElementById(id);
-        const mix = mixFromHash(location.hash);
         const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         $('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'COPIED'; setTimeout(() => { $('copy').textContent = 'COPY THIS LINK'; }, 1500); };
         $('mixz-link').onclick = () => { location.href = '/'; };
 
-        if (!mix) {
-            $('list').innerHTML = '<li class="empty" style="display:block">This link is not a mix. Ask the DJ for the link again, or open ZAO MixZ and press SHARE THE MIX after a set.</li>';
-            $('play-all').disabled = true;
-        } else {
+        // A #m= link holds the set itself. A #live= link follows the DJ's set as it plays
+        // (LiveMix.js); the page then keeps the latest set in its own address too.
+        const hash = parseMixHash(location.hash);
+        // Another mix link pasted into this tab: read it from the start (replaceState below does not fire this)
+        addEventListener('hashchange', () => location.reload());
+        const say = (text) => { $('list').innerHTML = `<li class="empty" style="display:block">${esc(text)}</li>`; };
+        const list = $('list');
+        const player = $('player');
+        let tracks = [];
+        let cur = -1;
+        let heardAt = 0;
+        const keyOf = (t) => (t ? `${t.src}|${t.id || t.title}|${t.at}` : '');
+        const resolved = new Map();   // a song already looked up is not fetched again
+
+        const draw = () => {
+            list.innerHTML = tracks.map((t) => `
+                <li data-n="${t.n}" class="${t.n === cur ? 'now' : ''}">
+                    <span class="n">${String(t.n + 1).padStart(2, '0')}</span>
+                    <span class="art" style="${t.art ? `background-image:url(&quot;${esc(t.art)}&quot;)` : ''}"></span>
+                    <span class="t"><b>${esc(t.title || 'Loading')}</b><small>${esc(t.artist)}${t.page ? ` · <a href="${esc(t.page)}" target="_blank" rel="noopener">${t.src === 'audius' ? 'on Audius' : 'on SongChainn'}</a>` : t.src === 'local' ? ' · from the DJ\'s own files' : ''}</small><span class="at">${fmtTime(t.at)}${t.du ? ` for ${fmtTime(t.du)}` : ''}</span></span>
+                    <button class="play" data-play="${t.n}" ${t.stream ? '' : 'disabled'}>${t.stream ? (t.n === cur && !player.paused ? 'PLAYING' : 'PLAY') : 'NO STREAM'}</button>
+                </li>`).join('');
+        };
+        const header = (mix) => {
             const when = mix.d ? new Date(mix.d + 'Z') : null;
             const dateText = when && !isNaN(when) ? when.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
             $('name').textContent = mix.n || `The mix${dateText ? ', ' + dateText : ''}`;
             document.title = `${$('name').textContent} · ZAO MixZ`;
             $('sub').textContent = [mix.dj ? `Mixed by ${mix.dj}` : '', mix.n && dateText ? dateText : ''].filter(Boolean).join(' · ');
             const len = mixLength(mix);
-            $('chips').innerHTML = `<span class="chip">${mix.t.length} ${mix.t.length === 1 ? 'SONG' : 'SONGS'}</span>${len ? `<span class="chip">${Math.round(len / 60)} MIN</span>` : ''}`;
+            const live = hash.live && heardAt && Date.now() - heardAt < LIVE_FOR_MS;
+            $('chips').innerHTML = `${live ? '<span class="chip live">LIVE NOW</span>' : ''}<span class="chip">${mix.t.length} ${mix.t.length === 1 ? 'SONG' : 'SONGS'}</span>${len ? `<span class="chip">${Math.round(len / 60)} MIN</span>` : ''}`;
+        };
+        let showing = 0;
+        const show = async (mix) => {
+            const mine = ++showing;
+            header(mix);
+            const playing = keyOf(tracks[cur]);
+            const next = mix.t.map((e, n) => ({ n, src: e[0] === 'lo' ? 'local' : e[0] === 'sc' ? 'songchainn' : 'audius', id: e[0] === 'lo' ? '' : e[1], title: e[0] === 'lo' ? e[1] : '', artist: e[0] === 'lo' ? e[2] : '', at: e[0] === 'lo' ? e[3] : e[2], du: e[0] === 'lo' ? e[4] : e[3], art: null, stream: null, page: null }));
+            for (const t of next) Object.assign(t, resolved.get(`${t.src}|${t.id || t.title}`) || {});
+            tracks = next; cur = tracks.findIndex((t) => keyOf(t) === playing); draw();
+            const looked = await resolveTracks(mix);
+            if (mine !== showing) return;   // a newer set arrived while these were looked up
+            for (const t of looked) { const { title, artist, art, stream, page } = t; resolved.set(`${t.src}|${t.id || t.title}`, { title, artist, art, stream, page }); }
+            tracks = looked; cur = tracks.findIndex((t) => keyOf(t) === playing); draw();
+            $('play-all').disabled = !tracks.some((t) => t.stream);
+        };
 
-            let tracks = [];
-            const list = $('list');
-            const draw = () => {
-                list.innerHTML = tracks.map((t) => `
-                    <li data-n="${t.n}">
-                        <span class="n">${String(t.n + 1).padStart(2, '0')}</span>
-                        <span class="art" style="${t.art ? `background-image:url(&quot;${esc(t.art)}&quot;)` : ''}"></span>
-                        <span class="t"><b>${esc(t.title || 'Loading')}</b><small>${esc(t.artist)}${t.page ? ` · <a href="${esc(t.page)}" target="_blank" rel="noopener">${t.src === 'audius' ? 'on Audius' : 'on SongChainn'}</a>` : t.src === 'local' ? ' · from the DJ\'s own files' : ''}</small><span class="at">${fmtTime(t.at)}${t.du ? ` for ${fmtTime(t.du)}` : ''}</span></span>
-                        <button class="play" data-play="${t.n}" ${t.stream ? '' : 'disabled'}>${t.stream ? 'PLAY' : 'NO STREAM'}</button>
-                    </li>`).join('');
-            };
-            tracks = mix.t.map((e, n) => ({ n, src: e[0], title: '', artist: '', at: e[0] === 'lo' ? e[3] : e[2], du: e[0] === 'lo' ? e[4] : e[3], art: null, stream: null, page: null }));
+        // Hearing it again: one song after the next, in the order they were played.
+        const playable = () => tracks.filter((t) => t.stream);
+        const playN = (n) => {
+            const t = tracks[n];
+            if (!t?.stream) return;
+            cur = n;
+            player.src = t.stream;
+            player.play().catch(() => {});
+            $('bar').classList.remove('hidden');
+            $('bar-title').textContent = t.title; $('bar-artist').textContent = t.artist;
             draw();
-            tracks = await resolveTracks(mix);
-            draw();
+        };
+        // Songs added while one plays are picked up here: the list is read again at each step
+        const step = (dir) => { const ns = playable().map((t) => t.n); const i = ns.indexOf(cur); const next = ns[i + dir]; if (next != null) playN(next); else if (dir > 0) { player.pause(); $('bar').classList.add('hidden'); draw(); } };
+        player.addEventListener('ended', () => step(1));
+        player.addEventListener('timeupdate', () => { $('bar-prog').style.width = player.duration ? `${(player.currentTime / player.duration) * 100}%` : '0'; });
+        $('play-all').onclick = () => { const first = playable()[0]; if (first) playN(first.n); };
+        $('bar-next').onclick = () => step(1);
+        $('bar-prev').onclick = () => step(-1);
+        list.addEventListener('click', (e) => { const b = e.target.closest('[data-play]'); if (b && !b.disabled) { const n = Number(b.dataset.play); if (n === cur && !player.paused) { player.pause(); draw(); } else playN(n); } });
 
-            // Hearing it again: one song after the next, in the order they were played.
-            const player = $('player');
-            let cur = -1;
-            const playable = () => tracks.filter((t) => t.stream);
-            const playN = (n) => {
-                const t = tracks[n];
-                if (!t?.stream) return;
-                cur = n;
-                player.src = t.stream;
-                player.play().catch(() => {});
-                $('bar').classList.remove('hidden');
-                $('bar-title').textContent = t.title; $('bar-artist').textContent = t.artist;
-                document.querySelectorAll('li').forEach((li) => li.classList.toggle('now', Number(li.dataset.n) === n));
-                document.querySelectorAll('.play').forEach((b) => { if (!b.disabled) b.textContent = Number(b.dataset.play) === n ? 'PLAYING' : 'PLAY'; });
-            };
-            const step = (dir) => { const list = playable().map((t) => t.n); const i = list.indexOf(cur); const next = list[i + dir]; if (next != null) playN(next); else if (dir > 0) { player.pause(); $('bar').classList.add('hidden'); } };
-            player.addEventListener('ended', () => step(1));
-            player.addEventListener('timeupdate', () => { $('bar-prog').style.width = player.duration ? `${(player.currentTime / player.duration) * 100}%` : '0'; });
-            $('play-all').onclick = () => { const first = playable()[0]; if (first) playN(first.n); };
-            $('bar-next').onclick = () => step(1);
-            $('bar-prev').onclick = () => step(-1);
-            list.addEventListener('click', (e) => { const b = e.target.closest('[data-play]'); if (b && !b.disabled) { const n = Number(b.dataset.play); if (n === cur && !player.paused) { player.pause(); b.textContent = 'PLAY'; } else playN(n); } });
-            if (!playable().length) $('play-all').disabled = true;
+        const snapshot = hash.m ? decodeMix(hash.m) : null;
+        if (!snapshot && !hash.live) {
+            say('This link is not a mix. Ask the DJ for the link again, or open ZAO MixZ and press SHARE THE MIX.');
+            $('play-all').disabled = true;
+        } else {
+            $('play-all').disabled = true;
+            if (snapshot) show(snapshot); else say('Waiting for the set. The songs show here as the DJ plays them.');
+            if (hash.live) {
+                let heard = false;
+                setTimeout(() => { if (!heard && !snapshot) say('Nothing from the DJ yet. The set may not have started, or it ended long enough ago that the relay no longer holds it. Keep this page open: songs show here the moment the DJ plays.'); }, 12000);
+                setInterval(() => { if (tracks.length) header(decodeMix(hash.m) || { t: [] }); }, 15000);
+                watchLive(hash.live, (u) => {
+                    heard = true; heardAt = Date.now();
+                    hash.m = u.m;
+                    // The set in the address too, so a copy of this link keeps the mix whatever the relay does
+                    try { history.replaceState(null, '', `#live=${hash.live}&m=${u.m}`); } catch (e) { /* address stays */ }
+                    if (u.mix.t.length) show(u.mix); else { header(u.mix); say('The DJ is on. The first song shows here when it plays.'); }
+                }).catch(() => { if (!snapshot) say('Could not reach the live set right now. Try again in a minute.'); });
+            }
         }
     </script>
 </body>

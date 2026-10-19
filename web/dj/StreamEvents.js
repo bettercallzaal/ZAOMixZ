@@ -92,6 +92,7 @@ export class StreamEvents {
         const env = envelope(type, data, ++this.seq, this.now());
         b._broadcast(env);                                  // same browser (overlays), only ON AIR
         if (b.isLive) this.dj.remote?.sendEvent?.(env);     // off the machine, over the phone relay
+        if (b.isLive) this.dj.agents?.sendEvent?.(env);     // agents on their own channels (AgentLink.js)
         return env;
     }
 

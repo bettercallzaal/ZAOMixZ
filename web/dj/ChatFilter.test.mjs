@@ -22,6 +22,8 @@ for (const t of ['visit evil.ai', 'evil.dev/x', 'evil.live', 'evil.info', 'go to
 for (const t of ['song feat. Drake', 'e.g. this one', 'Mr. Brightside please', 'Vol. 2 of the set', 'well...done', '3.14 is pi', 'U.S.A. anthem', 'a.m. vibes', '@iman great']) {
     check(`prose passes: ${JSON.stringify(t)}`, moderate(t).ok);
 }
+for (const t of ['t.me/x', 'join t.me/spam', 'x.com/u']) check(`held as a link, one-letter name: ${JSON.stringify(t)}`, moderate(t).reason === 'link');
+for (const t of ['i.e. that one', 'a.m. vibes', 'v2.0 remix']) check(`prose passes: ${JSON.stringify(t)}`, moderate(t).ok);
 for (const [name, code] of [['soft hyphen', 0xad], ['combining grapheme joiner', 0x34f], ['Mongolian vowel separator', 0x180e]]) {
     check(`a ${name} cannot split a blocked word`, moderate(`bad${C(code)}word`, { blocked: ['badword'] }).reason === 'blocked word');
 }

@@ -100,6 +100,9 @@ Twitch chat, ZAO MixZ desk, battle platforms (adapters)
    - Agents cannot vote, and an automated or duplicate vote is dropped.
    - The request line's limits and the chat cap apply across every platform.
 
+### Built so far
+- **Gate 1, identity** (`web/dj/AgentLink.js`). Each agent gets a key of its own (`mza1.` and a 128-bit token), on a channel of its own. It never gets the phone link, whose token is also the key to the whole phone channel. The desk knows which agent sent a message by the channel it arrived on, and stamps every proposal `from: 'agent'` with the desk's name for that agent. Whatever the agent writes about its own name, role or device is dropped. In gate 1 an agent may only say `hello` and `ping`, and it receives the published events (`OUT_TYPES`, only while ON AIR). A request stamped `from: 'agent'` never auto-plays, whatever the AUTO-PLAY REQUESTS switch says. Nothing in the app creates an agent yet.
+
 ### Required before any outside agent connects
 
 These are gates, not features to add later. All of them must exist and be tested first:

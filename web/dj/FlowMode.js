@@ -80,7 +80,10 @@ export class FlowMode {
     }
 
     // Load a track to a deck — handles both local (dataFile) and streaming (streamUrl)
-    _loadTrackToDeck(deck, track) {
+    // `onLateFail` runs if a local track's load fails after this returns (its json would not
+    // fetch, or the deck refused it): no ready or error event comes for that, so without it the
+    // first song sat silent and a song mid-set waited out the 25 second timeout.
+    _loadTrackToDeck(deck, track, onLateFail = null) {
         if (track.streamUrl || track.source === 'audius' || track.source === 'soundcloud' || track.source === 'spotify') {
             // Streaming track — use loadDirect
             const streamUrl = track.streamUrl;
@@ -97,13 +100,19 @@ export class FlowMode {
                 artwork: track.artwork || null,
                 source: track.source || 'stream',
                 id: track.id || track.sourceId || null,
+                // The deck checks the licence on this meta (Licence.js canPlay): a track's own
+                // licence, its Audius Creative Commons licence and its uploader must come with it,
+                // as they do when the library loads a track by hand.
+                licence: track.licence || null,
+                audiusLicense: track.audiusLicense || null,
+                uploader: track.uploader || null,
             };
             return deck.loadDirect(streamUrl, meta) !== false;
         } else if (track.dataFile) {
             // Local track — use loadTrack. The manifest entry carries the licence, so an
             // unlicensed track is skipped here rather than refused after the handover started.
             if (!canPlay(track).ok) return false;
-            deck.loadTrack(track.dataFile);
+            Promise.resolve(deck.loadTrack(track.dataFile)).then((ok) => { if (ok === false) onLateFail?.(); }, () => onLateFail?.());
             return true;
         } else {
             console.warn('[FlowMode] Track has neither dataFile nor streamUrl:', track.title);
@@ -141,7 +150,8 @@ export class FlowMode {
         // press play once it is ready; a song that will not load hands over to the next one.
         this.dj.audioRouter.resume();
         const deckA = this.dj.decks.A;
-        if (this._loadTrackToDeck(deckA, track) === false) { this._startNext(); return; }
+        const lateFail = () => { if (this.currentTrack === track && !deckA.isPlaying) { console.warn('[FlowMode] First song would not load, trying the next one'); this._startNext(); } };
+        if (this._loadTrackToDeck(deckA, track, lateFail) === false) { this._startNext(); return; }
         this._playWhenReady(deckA, track);
 
         // Auto-suggest next tracks
@@ -318,7 +328,13 @@ export class FlowMode {
 
         // Load next track to idle deck (handles both local and streaming).
         // A refused track (no licence) leaves the queue and the current song keeps playing.
-        if (!reuse && this._loadTrackToDeck(incoming, nextTrack) === false) {
+        const lateFail = () => {
+            if (token !== this._mixToken) return; // given up on already
+            this._dropNext(nextTrack, 'its file would not load');
+            this._autoFillQueue();
+            this._updateUI();
+        };
+        if (!reuse && this._loadTrackToDeck(incoming, nextTrack, lateFail) === false) {
             this._dropNext(nextTrack, 'refused: no licence, or the deck would not take it');
             this._autoFillQueue();
             this._updateUI();
@@ -369,9 +385,15 @@ export class FlowMode {
             this.cancelTransition();
             return;
         }
+        // A slow load eats into the time left on the outgoing song. The fade must end before
+        // that song does: shorten it to fit, and if the song has already run out, cut.
+        const out = this.dj.decks[this.currentDeck];
+        const left = (out?.getDuration?.() || 0) - (out?.getCurrentTime?.() || 0);
+        if (!out?.isPlaying || left <= 1.5) { this._cut(idleDeck, direction, track); return; }
+        const seconds = Math.min(this.transitionDuration, Math.max(1.5, left - 0.5));
         if (engine) {
             try {
-                engine.startProgrammatic(direction, this.transitionDuration, {
+                engine.startProgrammatic(direction, seconds, {
                     type: this.transitionType,
                     sourceBPM: this.dj.decks[this.currentDeck].getBPM(),
                     targetBPM: this.dj.decks[idleDeck].getBPM(),

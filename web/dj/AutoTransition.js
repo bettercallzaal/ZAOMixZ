@@ -150,6 +150,8 @@ export class AutoTransition {
                 // The blend swaps the bass (source low cut to -24dB, target low set to 0).
                 // Remember what each deck had so _cleanupEffects can put it back.
                 this._eqBefore = { A: this._lowEQ('A'), B: this._lowEQ('B') };
+                this._eqWrote = { A: null, B: null };
+                this._eqHands = { A: false, B: false };
                 break;
         }
     }
@@ -240,12 +242,12 @@ export class AutoTransition {
             // Middle 20%: swap the bass — cut source lows, keep target lows
             const swapProgress = (progress - 0.4) / 0.2; // 0 to 1 within this window
             const bassKill = -24 * swapProgress; // 0 to -24dB
-            this.router.setEQ(sourceDeckId, 'low', bassKill);
-            this.router.setEQ(targetDeckId, 'low', 0);
+            this._blendEQ(sourceDeckId, bassKill);
+            this._blendEQ(targetDeckId, 0);
         } else {
             // Last 40%: source bass fully cut, target bass normal
-            this.router.setEQ(sourceDeckId, 'low', -24);
-            this.router.setEQ(targetDeckId, 'low', 0);
+            this._blendEQ(sourceDeckId, -24);
+            this._blendEQ(targetDeckId, 0);
         }
     }
 
@@ -471,9 +473,23 @@ export class AutoTransition {
         if (this._eqBefore) {
             // Undo the bass swap: the deck that went out kept a -24dB low cut, and the one
             // coming in lost the DJ's own low setting. Both get back what they had.
-            for (const id of ['A', 'B']) this.router.setEQ(id, 'low', this._eqBefore[id]);
+            // A deck whose low knob the DJ moved during the blend keeps what the DJ set.
+            for (const id of ['A', 'B']) if (!this._eqHands?.[id]) this.router.setEQ(id, 'low', this._eqBefore[id]);
             this._eqBefore = null;
+            this._eqWrote = null;
+            this._eqHands = null;
         }
+    }
+
+    // One step of the blend's bass swap. If the low EQ is no longer what the blend last wrote,
+    // the DJ has moved the knob: from then on the blend leaves that deck's low EQ to them.
+    _blendEQ(id, db) {
+        if (!this._eqWrote) { this.router.setEQ(id, 'low', db); return; }
+        if (this._eqHands[id]) return;
+        const last = this._eqWrote[id];
+        if (last !== null && Math.abs(this._lowEQ(id) - last) > 0.01) { this._eqHands[id] = true; return; }
+        this.router.setEQ(id, 'low', db);
+        this._eqWrote[id] = db;
     }
 
     // A deck's low EQ as the DJ set it (a killed band keeps its setting aside)

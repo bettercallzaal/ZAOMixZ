@@ -120,6 +120,21 @@ console.log('Flow Mode: a song that loads');
     check('played and setlist both list one then two', flow.playedInSession.join() === 'one,two' && logged.join() === 'one,two');
 }
 
+// ── 1b. A licensed stream keeps its licence on the way to the deck ──
+console.log('Flow Mode: a stream with its own licence');
+{
+    const { canPlay } = await import('./Licence.js');
+    const { flow, decks, eng } = desk();
+    const plain = decks.B.loadDirect;
+    decks.B.loadDirect = (url, meta) => (canPlay(meta).ok ? plain(url, meta) : false); // what the real deck does
+    const licensed = { id: 'own', title: 'Own Song', artist: 'Some Artist', source: 'zao-source', streamUrl: 'https://x/own.mp3',
+        licence: { artist: 'Some Artist', uses: { stream: true, dj: true, radio: true, commercial: false }, terms: 'https://example.org/grant' } };
+    flow.queue = [licensed];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('a stream that carries its own licence is not refused at the deck', decks.B.title === 'Own Song' && eng.starts.length === 1);
+}
+
 // ── 2. The next song is refused ───────────────────────────────
 console.log('Flow Mode: the next song is refused');
 {
@@ -134,6 +149,31 @@ console.log('Flow Mode: the next song is refused');
     playTo(flow, decks.A, 24);
     tick(400);
     check('the next timeupdate mixes into the song after it, with no dead air', decks.B.title === 'three' && eng.starts.length === 1 && decks.A.isPlaying);
+}
+
+// ── 2b. A local song whose file will not load ─────────────────
+console.log('Flow Mode: a local song whose file will not load');
+const local = (title) => ({ id: title, title, artist: 'Test Artist', source: 'file', dataFile: `data/${title}.json` });
+const failingLoad = (deck) => { deck.loadTrack = (file) => { deck.loads.push(file); return Promise.resolve(false); }; };
+{
+    const { flow, decks } = desk();
+    failingLoad(decks.A);
+    flow.queue = [song('two')];
+    flow.start(local('broken-local'));
+    await Promise.resolve(); await Promise.resolve();
+    tick(400);
+    check('a first song whose file will not load hands over to the next one', decks.A.title === 'two' && decks.A.isPlaying);
+}
+{
+    const { flow, decks, eng } = desk();
+    failingLoad(decks.B);
+    flow.queue = [local('broken-local'), song('three')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    await Promise.resolve(); await Promise.resolve();
+    check('mid-set it is dropped at once, not after the 25 second wait', !flow.queue.some((t) => t.title === 'broken-local') && !flow._transitioning && !flow._nearEndTriggered);
+    playTo(flow, decks.A, 24); tick(400);
+    check('and the next timeupdate mixes into the song after it', decks.B.title === 'three' && eng.starts.length === 1);
 }
 
 // ── 3. The next song never loads ──────────────────────────────
@@ -167,6 +207,36 @@ console.log('Flow Mode: the next song never loads');
     playTo(flow, decks.A, 10);
     tick(400);
     check('a song added after the queue ran dry still gets mixed in before the end', decks.B.title === 'late' && eng.starts.length === 1);
+}
+
+// ── 3b. A slow load leaves less time than the fade ───────────
+console.log('Flow Mode: the fade fits the time left');
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    decks.A.time = decks.A.duration - 4; // the load took a while: 4 seconds left
+    tick(400);
+    check('with 4 seconds left an 8 second fade is shortened to end before the song does', eng.starts.length === 1 && eng.starts[0].seconds <= 3.5 && eng.starts[0].seconds >= 1.5);
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25);
+    decks.A.time = decks.A.duration; decks.A.isPlaying = false; // the outgoing song ran out while loading
+    tick(400);
+    check('if the outgoing song has already ended, it cuts straight to the new one', eng.starts.length === 0 && decks.B.isPlaying && flow.currentDeck === 'B');
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    playTo(flow, decks.A, 25); tick(400);
+    check('with plenty of time left the fade keeps its planned length', eng.starts[0].seconds === 8);
 }
 
 // ── 4. No mix engine, or one that fails ───────────────────────
@@ -254,7 +324,9 @@ console.log('Flow Mode: CANCEL part way through a mix');
     check('the mix is not restarted at once over the cancel', (playTo(flow, decks.A, 20), eng.starts.length === 1));
     decks.A.time = decks.A.duration; flow.onTrackNearEnd(decks.A); // the outgoing song runs out
     tick(400);
-    check('at the end it mixes in from the deck already holding it, no reload', eng.starts.length === 2 && decks.B.loads.filter((t) => t === 'two').length === 1);
+    // The outgoing song has run out, so there is nothing to fade from: it cuts to the deck
+    // already holding the song (it fades in only while the outgoing song still plays).
+    check('at the end it cuts to the deck already holding it, no reload', eng.starts.length === 1 && flow.currentDeck === 'B' && decks.B.isPlaying && decks.B.loads.filter((t) => t === 'two').length === 1);
     eng.finish();
     check('and the cancelled song is in the setlist once', logged.join() === 'one,two' && flow.currentTrack.title === 'two');
 }

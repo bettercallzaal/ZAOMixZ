@@ -2,7 +2,7 @@
 // Full offline support with app shell caching, audio IndexedDB caching,
 // graceful updates, and background sync
 
-const CACHE_VERSION = 41;
+const CACHE_VERSION = 42;
 const CACHE_NAME = `aurdour-v${CACHE_VERSION}`;
 const AUDIO_CACHE_NAME = 'aurdour-audio-v1';
 
@@ -57,6 +57,14 @@ const APP_SHELL = [
     '/dj/StreamBroadcast.js',
     '/dj/FX.js',
     '/dj/AutoTransition.js',
+    '/dj/Clock.js',
+    '/dj/Html.js',
+    '/dj/FlowDirector.js',
+    '/dj/StreamEvents.js',
+    '/dj/ChatFilter.js',
+    '/dj/BeatGridOverlay.js',
+    '/dj/Archive.js',
+    '/dj/ArtistTab.js',
     '/dj/Setlist.js',
     '/dj/HarmonicMixer.js',
     '/dj/StemSeparator.js',

@@ -539,7 +539,7 @@ export class DjMixz {
         if (!bar) {
             bar = document.createElement('div'); bar.id = 'djmixz-bar'; bar.className = 'djmixz-bar';
             document.body.appendChild(bar);
-            bar.addEventListener('click', (e) => { const el = e.target.closest?.('[data-act]'); const act = el?.dataset.act; if (act === 'swap') { const alt = this.advice?.alts?.[Number(el.dataset.i)]; if (alt) this.swapNext(alt.track); } if (act === 'take') this.takeOver('button'); if (act === 'back') this.handBack(); if (act === 'vote-ai' || act === 'vote-human') this.vote(act === 'vote-ai' ? 'ai' : 'human'); });
+            bar.addEventListener('click', (e) => { const el = e.target.closest?.('[data-act]'); const act = el?.dataset.act; if (act === 'swap') { const alt = this.advice?.alts?.[Number(el.dataset.i)]; if (alt) this.swapNext(alt.track); } if (act === 'agentpick' || act === 'agentdismiss') { const agents = this.dj.agents; if (act === 'agentpick') agents?.playPick?.(el.dataset.pid); else agents?.dismissPick?.(el.dataset.pid); this._renderBar(); } if (act === 'take') this.takeOver('button'); if (act === 'back') this.handBack(); if (act === 'vote-ai' || act === 'vote-human') this.vote(act === 'vote-ai' ? 'ai' : 'human'); });
         }
         const next = this.plan[this.index + 1];
         const esc = (x) => String(x || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -550,11 +550,16 @@ export class DjMixz {
         this._announceAdvice(adv);
         const busy = this._busy();
         const why = adv ? `<span class="djmixz-bar-why">why: ${esc(adv.why)}</span>` : '';
+        // Agents' picks (AgentPick.js): each labelled with the agent's name, played only on a tap
+        let picks = '';
+        try {
+            picks = !busy ? (this.dj.agents?.picks?.shown?.() || []).map((p) => `<button class="djmixz-bar-btn swap agentpick" data-act="agentpick" data-pid="${esc(p.pid)}" title="${esc(p.why || 'no reason given')}">AI PICK FROM ${esc(p.agent)}: ${esc(p.title)}</button><button class="djmixz-bar-btn agentdismiss" data-act="agentdismiss" data-pid="${esc(p.pid)}" aria-label="Dismiss ${esc(p.agent)}'s pick">X</button>`).join('') : '';
+        } catch (e) { picks = ''; }
         const swaps = adv && !busy ? adv.alts.map((a, i) => `<button class="djmixz-bar-btn swap${a.better ? ' better' : ''}" data-act="swap" data-i="${i}" title="${esc(a.reasons.join(', '))}">${a.better ? 'BETTER FIT: ' : 'OR: '}${esc(a.track.title)}</button>`).join('') : '';
         bar.classList.toggle('human', this.human);
         bar.innerHTML = this.human
             ? `<span class="djmixz-bar-who">YOU HAVE THE DECKS</span><span class="djmixz-bar-next">DJ MixZ is standing by</span>${turn}${score}<button class="djmixz-bar-btn" data-act="back">HAND BACK TO DJ MIXZ</button>`
-            : `<span class="djmixz-bar-who">DJ MIXZ IS MIXING</span><span class="djmixz-bar-next">${next ? 'next: ' + esc(next.track.title) + ', ' + esc(next.move?.type.replace('-', ' ')) : 'last track'}</span>${why}${swaps}${turn}${score}${votes}<button class="djmixz-bar-btn" data-act="take">TAKE OVER</button>`;
+            : `<span class="djmixz-bar-who">DJ MIXZ IS MIXING</span><span class="djmixz-bar-next">${next ? 'next: ' + esc(next.track.title) + ', ' + esc(next.move?.type.replace('-', ' ')) : 'last track'}</span>${why}${swaps}${picks}${turn}${score}${votes}<button class="djmixz-bar-btn" data-act="take">TAKE OVER</button>`;
     }
 
     // ── Panel ──────────────────────────────────────────────────

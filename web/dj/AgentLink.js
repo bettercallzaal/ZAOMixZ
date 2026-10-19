@@ -16,6 +16,10 @@
 // new ones are refused and no events go to agents, until the DJ unmutes. It stays muted
 // across a reload.
 //
+// Gate 6, agent.recommendation (AgentPick.js): an agent granted 'next' may ask for the songs
+// left in the running DJ MixZ set ('tracks') and pick one ('recommend'). The pick shows in the
+// DJ MixZ bar under the agent's name and plays next only when the DJ taps it.
+//
 // Nothing in the app makes an agent yet: no outside agent connects until every gate exists
 // and Zaal says yes. The top half is pure and runs under node: see AgentLink.test.mjs.
 
@@ -24,6 +28,7 @@ import { OUT_TYPES } from './StreamEvents.js';
 import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
 import { agentPostData } from './AgentPost.js';
 import { CHAT_BLOCK_KEY } from './Settings.js';
+import { PickBoard, PICK_KIND, pickList } from './AgentPick.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
@@ -31,7 +36,10 @@ export const MAX_AGENTS = 8;
 export const MUTED_KEY = 'mixz-agents-muted';
 // What an agent may send. Anything else is dropped. 'propose' (gate 3) is a draft for the
 // DJ's approval queue (AgentQueue.js), and only of a kind the DJ granted that agent.
-export const AGENT_IN = new Set(['hello', 'ping', 'propose']);
+// 'tracks' and 'recommend' (gate 6) need the 'next' grant: the set's songs, and a pick of one.
+export const AGENT_IN = new Set(['hello', 'ping', 'propose', 'tracks', 'recommend']);
+// Every permission the DJ can grant an agent. All start off.
+export const GRANT_KINDS = [...PROPOSAL_KINDS, PICK_KIND];
 
 // A name the desk shows: letters, digits, spaces and - _ . only, 1 to 24 characters.
 export function agentName(raw) {
@@ -51,7 +59,7 @@ export function newAgent(name, { token = newToken(), id = newToken().slice(0, 12
 }
 
 // Only known kinds, true or false. Anything else in a saved list is dropped.
-export const cleanPerms = (p) => Object.fromEntries(PROPOSAL_KINDS.filter((k) => p && p[k] === true).map((k) => [k, true]));
+export const cleanPerms = (p) => Object.fromEntries(GRANT_KINDS.filter((k) => p && p[k] === true).map((k) => [k, true]));
 
 // A message from an agent, cleaned: only the kinds it may send, with nothing it says about
 // who it is. Null drops it.
@@ -59,6 +67,8 @@ export function cleanAgentMessage(raw) {
     if (!raw || typeof raw !== 'object' || !AGENT_IN.has(raw.t)) return null;
     if (raw.t === 'ping') return { t: 'ping', n: Number.isInteger(raw.n) ? raw.n : 0 };
     if (raw.t === 'propose') return { t: 'propose', kind: typeof raw.kind === 'string' ? raw.kind : '', text: typeof raw.text === 'string' ? raw.text : '' };
+    if (raw.t === 'recommend') return { t: 'recommend', track: typeof raw.track === 'string' ? raw.track : '', why: typeof raw.why === 'string' ? raw.why : '' };
+    if (raw.t === 'tracks') return { t: 'tracks' };
     return { t: 'hello' };
 }
 
@@ -69,6 +79,16 @@ export function stampAgent(agent, data = {}) {
     return { ...rest, from: 'agent', agent: agent.name, agentId: agent.id };
 }
 
+// What the desk lends an agent host for picks: the songs left in the running DJ MixZ set after
+// the next one, and the same SWAP a person makes (refused during a handover).
+export function deskDirector(dj) {
+    return {
+        pickable: () => { const m = dj?.djMixz; return m?.running && !m.human ? m.plan.slice(m.index + 2).map((p) => p.track) : []; },
+        swap: (track) => !!dj?.djMixz?.swapNext?.(track),
+        refresh: () => dj?.djMixz?._renderBar?.(),
+    };
+}
+
 // Only the published stream events go to agents.
 export const forAgents = (env) => !!env && env.v === 1 && OUT_TYPES.includes(env.type);
 
@@ -77,11 +97,13 @@ export const forAgents = (env) => !!env && env.v === 1 && OUT_TYPES.includes(env
 export class AgentHost {
     // RelayClass and storage are injectable for tests.
     // publish(type, data): where an approved draft goes out, as a stream event (StreamEvents.emit).
-    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null, now = () => Date.now() } = {}) {
-        Object.assign(this, { RelayClass, storage, onChange, publish, now });
+    // director: where picks come from and go (deskDirector). Without one, no set is running.
+    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null, now = () => Date.now(), director = null } = {}) {
+        Object.assign(this, { RelayClass, storage, onChange, publish, now, director });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
         this.queue = new ApprovalQueue({ storage, now });   // drafts waiting for the DJ, and the receipts
+        this.picks = new PickBoard(this.queue, { now });    // next-track picks waiting for a tap (gate 6)
         try { this.muted = this.storage?.getItem(MUTED_KEY) === 'on'; } catch (e) { this.muted = false; }
     }
 
@@ -96,7 +118,7 @@ export class AgentHost {
     setMuted(on) {
         this.muted = !!on;
         try { this.storage?.setItem(MUTED_KEY, this.muted ? 'on' : 'off'); } catch (e) { /* no storage */ }
-        if (this.muted) this.queue.dropAll('muted');
+        if (this.muted) { this.queue.dropAll('muted'); this.picks.dropAll('muted'); this.director?.refresh?.(); }
         for (const l of this.links.values()) l.relay.send({ t: 'muted', on: this.muted });
         this.onChange?.();
     }
@@ -123,7 +145,7 @@ export class AgentHost {
     // Lets one agent propose one kind of draft, or stops it. Every kind starts off.
     grant(id, kind, on) {
         const a = this.agents.find((x) => x.id === id);
-        if (!a || !PROPOSAL_KINDS.includes(kind)) return false;
+        if (!a || !GRANT_KINDS.includes(kind)) return false;
         a.perms = { ...a.perms, [kind]: !!on };
         this._save();
         this.onChange?.();
@@ -145,6 +167,8 @@ export class AgentHost {
         this.links.get(id)?.relay.close();
         this.links.delete(id);
         this.queue.dropAll('agent removed', id);
+        this.picks.dropAll('agent removed', id);
+        this.director?.refresh?.();
         this.agents = this.agents.filter((a) => a.id !== id);
         this._save();
         this.onChange?.();
@@ -152,7 +176,7 @@ export class AgentHost {
 
     async start() {
         // The MUTE ALL AGENTS button follows who is connected
-        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => { this.queue.expire(); this.renderMute(); }, 1000);
+        if (!this._muteTimer && typeof setInterval !== 'undefined' && globalThis.document) this._muteTimer = setInterval(() => { this.queue.expire(); if (this.picks.expire().length) this.director?.refresh?.(); this.renderMute(); }, 1000);
         for (const agent of this.agents) {
             if (this.links.has(agent.id)) continue;
             const relay = new this.RelayClass({ token: agent.token, role: 'host', onMessage: (msg) => this._onMessage(agent, msg) });
@@ -180,10 +204,37 @@ export class AgentHost {
             this.onChange?.();
             return;
         }
+        if (msg.t === 'recommend') {
+            const r = this.picks.recommend(agent, msg, { muted: this.muted, blocked: this._blocked(), pickable: this._pickable() });
+            link.relay.send({ t: 'pick', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
+            if (r.ok) this.director?.refresh?.();
+            this.onChange?.();
+            return;
+        }
         if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
+        if (msg.t === 'tracks') {
+            const fresh = this.agents.find((a) => a.id === agent.id);
+            link.relay.send(fresh?.perms?.[PICK_KIND] ? { t: 'tracks', list: pickList(this._pickable()) } : { t: 'tracks', list: [], reason: 'not granted' });
+            return;
+        }
         if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
         else if (msg.t === 'ping') link.relay.send({ t: 'pong', n: msg.n });
     }
+
+    _pickable() { try { return this.director?.pickable?.() || []; } catch (e) { return []; } }
+
+    // The DJ tapped an agent's pick: it plays next if the swap goes through (not during a
+    // handover, not while muted). The pick stays up when the swap is refused.
+    playPick(pid) {
+        const p = this.picks.find(pid);
+        if (!p || this.muted) return false;
+        if (!this.director?.swap?.(p.track)) return false;
+        this.picks.taken(pid);
+        this.onChange?.();
+        return true;
+    }
+
+    dismissPick(pid) { const r = this.picks.dismiss(pid); if (r) this.onChange?.(); return !!r; }
 
     // A stream event for every connected agent (StreamEvents.emit, only while ON AIR).
     sendEvent(env) {

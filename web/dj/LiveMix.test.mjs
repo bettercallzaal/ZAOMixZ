@@ -6,7 +6,7 @@ let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
 process.removeAllListeners('warning');
 
-const { parseMixHash, liveUrl, liveTopic, newKeys, signUpdate, readUpdate, liveMix, openLobby, LiveMixHost, validKey, LOBBY_IDLE_MS, STORE_KEY } = await import('./LiveMix.js');
+const { parseMixHash, liveUrl, liveTopic, newKeys, signUpdate, readUpdate, liveMix, openLobby, LiveMixHost, validKey, LOBBY_IDLE_MS, STORE_KEY, isLiveNow, LIVE_FOR_MS } = await import('./LiveMix.js');
 const { encodeMix, decodeMix } = await import('./MixPage.js');
 
 const t0 = Date.UTC(2026, 9, 19, 18, 0, 0);
@@ -17,7 +17,7 @@ const keys = await newKeys();
 check('the key is 43 characters, safe in a link', validKey(keys.pub) && keys.jwk.d);
 check('the link is mix.html#live=<key>', liveUrl('https://zaomixz.vercel.app/', keys.pub) === `https://zaomixz.vercel.app/mix.html#live=${keys.pub}`);
 const m = encodeMix(liveMix([song('a1', t0, 200)], [], t0));
-check('a live link with the set written in reads both', JSON.stringify(parseMixHash(`#live=${keys.pub}&m=${m}`)) === JSON.stringify({ live: keys.pub, m }));
+check('a live link with the set written in reads both', JSON.stringify(parseMixHash(`#live=${keys.pub}&m=${m}`)) === JSON.stringify({ live: keys.pub, m, lobby: '' }));
 check('an old #m= link still reads', parseMixHash(`#m=${m}`).m === m && parseMixHash(`#m=${m}`).live === '');
 check('a key that is not one is ignored', parseMixHash('#live=abc').live === '' && parseMixHash('#live=' + 'x'.repeat(42) + '!').live === '');
 const topic = await liveTopic(keys.pub);
@@ -74,6 +74,28 @@ console.log('LiveMix: one link from the first song to the last');
     const host3 = new LiveMixHost(() => [], { storage: store, now: () => now, connect: async () => fake() });
     const link3 = await host3.link('https://zaomixz.vercel.app');
     check('a set quiet for six hours is over: the next one gets a new link', link3 !== link && JSON.parse(store.getItem(STORE_KEY)).t.length === 0);
+}
+
+console.log('LiveMix: LIVE NOW is the desk\'s signed time, not when the page heard it');
+check('a set signed a moment ago is live', isLiveNow(t0 - 5000, t0));
+check('an old signed set replayed now is not', !isLiveNow(t0 - LIVE_FOR_MS - 1, t0));
+check('nor one signed far in the future', !isLiveNow(t0 + 10 * 60000, t0) && !isLiveNow(undefined, t0));
+
+console.log('LiveMix: a new mix link on demand');
+{
+    const store = { data: {}, getItem(k) { return this.data[k] ?? null; }, setItem(k, v) { this.data[k] = v; }, removeItem(k) { delete this.data[k]; } };
+    const fake = () => ({ connected: true, on() {}, publish() {}, end() {} });
+    const host = new LiveMixHost(() => [song('n1', t0)], { storage: store, now: () => t0, connect: async () => fake() });
+    const first = await host.link('https://x');
+    host.newSet();
+    check('the saved set is forgotten', store.getItem(STORE_KEY) === null && host.lobby === null);
+    const second = await host.link('https://x');
+    check('the next share gets a new link, even inside six hours', second !== first && second.includes('#live='));
+    check('and does not carry the old songs over', JSON.parse(store.getItem(STORE_KEY)).t.length === 1);
+    // While hosting a lobby: refused, the key and the lobby stay as they are
+    host.room = { room: 'main', name: 'Main', topic: 'zaomixz/lobby/x' };
+    const key = host.lobby.pub;
+    check('refused while this desk holds a lobby, keeping its key and the lobby', host.newSet() === false && host.lobby?.pub === key && host.room?.room === 'main' && store.getItem(STORE_KEY) !== null);
 }
 
 console.log('LiveMix: a relay that will not connect');

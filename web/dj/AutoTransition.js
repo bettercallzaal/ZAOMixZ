@@ -486,7 +486,9 @@ export class AutoTransition {
     _blendEQ(id, db) {
         if (!this._eqWrote) { this.router.setEQ(id, 'low', db); return; }
         if (this._eqHands[id]) return;
-        const last = this._eqWrote[id];
+        // Compare with what the blend last wrote, or before its first write (the first 40%)
+        // with what the deck had when the blend began
+        const last = this._eqWrote[id] ?? this._eqBefore?.[id] ?? null;
         if (last !== null && Math.abs(this._lowEQ(id) - last) > 0.01) { this._eqHands[id] = true; return; }
         this.router.setEQ(id, 'low', db);
         this._eqWrote[id] = db;

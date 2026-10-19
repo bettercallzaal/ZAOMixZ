@@ -65,5 +65,22 @@ console.log('AutoTransition: the blend\'s bass swap');
     check('nor by the clean-up, while the deck the DJ left alone is restored', low('B') === 5 && low('A') === 3);
 }
 
+{
+    // The DJ turns deck B's low knob in the first 40%, before the swap has written anything
+    const router = { channels: { A: { crossfadeGain: { gain: { value: 0 } }, eqLow: { gain: { value: 3 } } }, B: { crossfadeGain: { gain: { value: 0 } }, eqLow: { gain: { value: -2 } } } },
+        _eqKillState: { A: { low: false }, B: { low: false } }, _eqSavedGain: { A: { low: 0 }, B: { low: 0 } },
+        setEQ(id, band, db) { if (band === 'low') this.channels[id].eqLow.gain.value = db; }, setFilter() {}, setCrossfade() {}, resume() {} };
+    const deck = () => ({ isPlaying: true, pause() { this.isPlaying = false; }, setPlaybackRate() {}, currentRate: 1 });
+    const at = new AutoTransition(router, null, { A: deck(), B: deck() });
+    at.direction = 'AtoB'; at.startPos = 0; at.endPos = 1; at.transitionType = 'blend';
+    at._initTransitionEffects();
+    at._animateBlend(0.2);
+    router.setEQ('B', 'low', 5);
+    at._animateBlend(0.7); at._animateBlend(1);
+    check('a low knob moved in the first 40% is not overwritten when the swap starts', router.channels.B.eqLow.gain.value === 5);
+    at._finishTransition();
+    check('nor at the clean-up; the other deck is still restored', router.channels.B.eqLow.gain.value === 5 && router.channels.A.eqLow.gain.value === 3);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

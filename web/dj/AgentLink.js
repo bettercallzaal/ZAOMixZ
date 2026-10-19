@@ -131,7 +131,7 @@ export class AgentHost {
         for (const agent of this.agents) {
             if (this.links.has(agent.id)) continue;
             const relay = new this.RelayClass({ token: agent.token, role: 'host', onMessage: (msg) => this._onMessage(agent, msg) });
-            this.links.set(agent.id, { relay, seen: 0 });
+            this.links.set(agent.id, { relay, seen: 0, hello: false });
             try { await relay.open(); } catch (e) { /* tries again on the next start */ }
         }
     }
@@ -149,14 +149,15 @@ export class AgentHost {
         if (!msg) return;
         link.seen = Date.now();
         if (this.muted) { link.relay.send({ t: 'muted', on: true }); this.onChange?.(); return; }
-        if (msg.t === 'hello') { link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
+        if (msg.t === 'hello') { link.hello = true; link.relay.send({ t: 'welcome', role: 'agent', name: agent.name }); this.onChange?.(); }
         else if (msg.t === 'ping') link.relay.send({ t: 'pong', n: msg.n });
     }
 
     // A stream event for every connected agent (StreamEvents.emit, only while ON AIR).
     sendEvent(env) {
         if (this.muted || !forAgents(env)) return;
-        for (const [id, l] of this.links) if (this.connected(id)) l.relay.send({ t: 'ev', ev: env });
+        // Only to an agent that said hello on this connection, not one that only pings
+        for (const [id, l] of this.links) if (l.hello && this.connected(id)) l.relay.send({ t: 'ev', ev: env });
     }
 
     // The desk's MUTE ALL AGENTS button: always there while an agent is connected or the agents

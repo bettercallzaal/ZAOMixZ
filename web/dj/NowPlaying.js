@@ -32,11 +32,19 @@ export function liveDeck(decks, xf = 0.5) {
 
 // Where a track lives on the web, for a link under the title. Null when there is none
 // (a local file, or a source without a page).
+// An Audius song page from a permalink. Only a path on audius.co: a permalink that would make
+// the link point at another host ("@other.site/...", "\\other") gives no link at all.
+export function audiusPage(permalink) {
+    if (typeof permalink !== 'string' || !permalink.startsWith('/')) return null;
+    const link = `https://audius.co${permalink}`;
+    try { return new URL(link).host === 'audius.co' ? link : null; } catch (e) { return null; }
+}
+
 export function songPage(meta) {
     if (!meta) return null;
     const id = String(meta.id ?? '');
     const src = meta.source || meta._source || (id.startsWith('songchainn:') ? 'songchainn' : '');
-    if (src === 'audius') return meta.permalink ? `https://audius.co${meta.permalink}` : null;
+    if (src === 'audius') return audiusPage(meta.permalink);
     if (src === 'songchainn') return 'https://songchainn.xyz';
     return null;
 }

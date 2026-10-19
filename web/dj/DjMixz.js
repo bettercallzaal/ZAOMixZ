@@ -10,6 +10,7 @@
 
 import { keyRelation } from './SwitchPad.js';
 import { advise } from './FlowDirector.js';
+import { esc } from './Html.js';
 
 // Mood = the energy the room should feel, from the first track (x = 0) to the last (x = 1).
 export const MOODS = [
@@ -362,6 +363,7 @@ export class DjMixz {
         const flow = this.dj.flowMode;
         if (!flow || !move) return;
         flow.transitionType = move.type;
+        flow.transitionWhy = move.why || null;
         flow.transitionDuration = move.seconds;
         flow.transitionPointMode = 'fixed';
         // Start early enough that the move finishes a few seconds before the old track runs out.
@@ -593,7 +595,7 @@ export class DjMixz {
         const artistSel = panel.querySelector('#djmixz-artist');
         const fillArtists = () => {
             const names = [...new Set((this.dj.library?.zaoTracks || []).filter((t) => t.source === 'songchainn').map((t) => t.artist))].sort((a, b) => a.localeCompare(b));
-            artistSel.innerHTML = names.map((n) => `<option value="${n.replace(/"/g, '&quot;')}">${n.replace(/</g, '&lt;')}</option>`).join('');
+            artistSel.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
             this.scArtist = artistSel.value || '';
         };
         panel.querySelector('#djmixz-source').addEventListener('change', (e) => { const one = e.target.value === 'songchainn-artist'; artistSel.hidden = !one; if (one) fillArtists(); });

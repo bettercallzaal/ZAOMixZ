@@ -24,6 +24,8 @@ export class FlowMode {
         this._nearEndTriggered = false; // our own near-end flag (independent of Deck's)
         this._mixToken = 0; // moves on whenever a handover is given up, so its wait for the deck stops
         this.onTrackDropped = null; // told about a song that would not load, so DJ MixZ can take it out of its plan
+        this.onHandover = null; // (phase, data): 'started' or 'finished', for the stream events (StreamEvents.js)
+        this.transitionWhy = null; // DJ MixZ's reason for the move, sent with transition.started
     }
 
     enable() {
@@ -63,7 +65,13 @@ export class FlowMode {
         const xf = parseFloat(document.getElementById('crossfader')?.value);
         const into = Number.isFinite(xf) ? (mix.direction === 'AtoB' ? xf / 100 : 1 - xf / 100) : 0;
         this._aired = mix;
+        this._handover('finished', { outcome: 'cancelled', title: mix.track?.title || null, reason: into >= 0.5 ? 'cancelled past halfway, the new song stays on' : 'cancelled before halfway, the old song stays on' });
         if (into >= 0.5) this.onTransitionComplete(mix.direction);
+    }
+
+    // Tell the stream events about a handover. A listener that throws must never touch playback.
+    _handover(phase, data) {
+        try { this.onHandover?.(phase, data); } catch (e) { console.warn('[FlowMode] handover listener failed:', e); }
     }
 
     toggle() {
@@ -265,6 +273,9 @@ export class FlowMode {
     onTransitionComplete(direction) {
         if (!this.enabled) return;
 
+        // An engine mix that ran to the end (a cut and a cancel report themselves)
+        if (this._mixing) this._handover('finished', { outcome: 'mixed', title: this._mixing.track?.title || null, reason: null });
+
         // Swap current deck
         this.currentDeck = this.currentDeck === 'A' ? 'B' : 'A';
         this._mixing = null;
@@ -318,7 +329,7 @@ export class FlowMode {
             this._updateUI();
         };
         if (!reuse && this._loadTrackToDeck(incoming, nextTrack, lateFail) === false) {
-            this._dropNext(nextTrack);
+            this._dropNext(nextTrack, 'refused: no licence, or the deck would not take it');
             this._autoFillQueue();
             this._updateUI();
             return;
@@ -334,7 +345,7 @@ export class FlowMode {
                 // A song that never loads used to stall the set here for good, the same song
                 // retried at every near-end. Drop it and go straight to the one after.
                 console.warn('[FlowMode] Deck load timed out, skipping', nextTrack.title);
-                this._dropNext(nextTrack);
+                this._dropNext(nextTrack, 'did not load in time');
                 this._loadFails = (this._loadFails || 0) + 1;
                 if (this._loadFails <= 3 && this.queue.length) this._triggerTransition();
                 else this._loadFails = 0;
@@ -350,7 +361,8 @@ export class FlowMode {
 
     // A song that would not load leaves the queue (and DJ MixZ's plan) unplayed, and frees the
     // near-end trigger, so the next timeupdate tries the song after it while this one still plays.
-    _dropNext(track) {
+    _dropNext(track, reason = null) {
+        this._handover('finished', { outcome: 'dropped', title: track?.title || null, reason });
         if (this.queue[0] === track) this.queue.shift();
         this.cancelTransition();
         this._nearEndTriggered = false;
@@ -374,7 +386,12 @@ export class FlowMode {
                     sourceBPM: this.dj.decks[this.currentDeck].getBPM(),
                     targetBPM: this.dj.decks[idleDeck].getBPM(),
                 });
-                if (engine.running) { this._mixing = { track, deck: idleDeck, direction }; this._markPlayed(idleDeck, track); return; }
+                if (engine.running) {
+                    this._mixing = { track, deck: idleDeck, direction };
+                    this._markPlayed(idleDeck, track);
+                    this._handover('started', { from: this.currentDeck, to: idleDeck, type: this.transitionType, seconds: this.transitionDuration, why: this.transitionWhy, title: track.title || null });
+                    return;
+                }
             } catch (e) {
                 console.warn('[FlowMode] Mix engine failed, cutting to the next song instead:', e);
                 try { engine.cancel?.(); } catch (e2) { /* already stopped */ }
@@ -394,6 +411,8 @@ export class FlowMode {
         if (cf) cf.value = end * 100;
         if (from.isPlaying) from.pause();
         this._markPlayed(idleDeck, track);
+        this._handover('started', { from: this.currentDeck, to: idleDeck, type: 'cut', seconds: 0, why: 'the mix engine was missing or failed, so a cut', title: track.title || null });
+        this._handover('finished', { outcome: 'cut', title: track.title || null, reason: null });
         this.onTransitionComplete(direction);
     }
 

@@ -14,7 +14,7 @@
 
 import { cleanTitle, liveDeck } from './NowPlaying.js';
 import { MOODS, tracksFrom } from './DjMixz.js';
-import { RequestQueue, cleanRequest, forCaller, canTape } from './RequestLine.js';
+import { RequestQueue, cleanRequest, forCaller, canTape, autoPick } from './RequestLine.js';
 import { canPlay } from './Licence.js';
 
 export const STATE_HZ = 5;
@@ -323,6 +323,8 @@ export class RemoteHost {
         this._tracks = new Map();
         this.requests = new RequestQueue();
         this.dj.requestLine = this.requests;   // the board rides in the snapshot
+        // Requests wait for PLAY NEXT unless the DJ switches this on (docs/STREAM-EVENTS.md)
+        try { this.autoPlay = localStorage.getItem('mixz-auto-requests') === 'on'; } catch (e) { this.autoPlay = false; }
         this._buildUI();
         // Once switched on it stays on across reloads, so the phone can always find the desk.
         if (validToken(this.token) && localStorage.getItem('mixz-remote') === 'on') this.start();
@@ -448,17 +450,16 @@ export class RemoteHost {
         for (const device of r.devices) this.relay?.send({ t: 'req', to: device, list: forCaller(this.requests, device) });
     }
 
-    // Once a second: is a requested song on now, or over? DJ MixZ slots the oldest request in.
+    // Once a second: is a requested song on now, or over? With AUTO-PLAY REQUESTS on, DJ MixZ
+    // slots the oldest request in; otherwise requests wait for PLAY NEXT at the desk.
     _requestTick() {
         if (!this.relay) return;
         const live = liveDeck(this.dj.decks, this.dj.audioRouter?._lastCrossfadePosition ?? 0.5);
         const m = live ? this.dj.decks[live]?.metadata?.metadata || {} : {};
         const changed = this.requests.nowPlaying(live ? m.title : '', m.artist || '');
         const mixz = this.dj.djMixz;
-        if (mixz?.running && !mixz.human && !this.requests.items.some((r) => r.status === 'next')) {
-            const r = this.requests.first();
-            if (r && mixz.playNext?.(r.track)) { this.requests.set(r.rid, 'next'); changed.push(r); }
-        }
+        const r = autoPick(this.requests, { on: this.autoPlay, running: mixz?.running, human: mixz?.human });
+        if (r && mixz.playNext?.(r.track)) { this.requests.set(r.rid, 'next'); changed.push(r); }
         changed.forEach((r) => this._tell(r));
         if (changed.length) this._renderRequests();
     }
@@ -476,6 +477,13 @@ export class RemoteHost {
         this.requests.items.filter((x) => x.status === 'next' && x !== r).forEach((x) => { x.status = 'waiting'; this._tell(x); });
         this.requests.set(r.rid, 'next');
         this._tell(r);
+        this._renderRequests();
+    }
+
+    setAutoPlay(on) {
+        this.autoPlay = !!on;
+        try { localStorage.setItem('mixz-auto-requests', this.autoPlay ? 'on' : 'off'); } catch (e) { /* no storage */ }
+        const box = document.getElementById('remote-requests'); if (box) box.dataset.sig = '';
         this._renderRequests();
     }
 
@@ -500,6 +508,11 @@ export class RemoteHost {
         box.textContent = '';
         if (!onair && !open.length) return;
         const head = document.createElement('div'); head.className = 'remote-req-head'; head.textContent = 'REQUEST LINE';
+        const auto = document.createElement('button'); auto.className = `btn-toolbar btn-sm${this.autoPlay ? ' active' : ''}`;
+        auto.textContent = `AUTO-PLAY ${this.autoPlay ? 'ON' : 'OFF'}`;
+        auto.title = 'On: DJ MixZ plays listeners\' requests by itself, oldest first. Off: each waits for PLAY NEXT.';
+        auto.onclick = () => this.setAutoPlay(!this.autoPlay);
+        head.appendChild(auto);
         box.appendChild(head);
         const row = (r) => {
             const el = document.createElement('div'); el.className = `remote-req ${r.status}`;
@@ -551,6 +564,13 @@ export class RemoteHost {
     _broadcast() {
         if (!this.relay?.online || !this._live().length) return;
         this.relay.send(snapshot(this.dj));
+    }
+
+    // A stream event (docs/STREAM-EVENTS.md) for the phones and viewer links on the relay.
+    // Sealed like everything else on it, so only someone holding the link can read it.
+    sendEvent(env) {
+        if (!this.relay?.online || !this._live().length) return;
+        this.relay.send({ t: 'ev', ev: env });
     }
 
     // ── The PHONE panel on the desktop ──

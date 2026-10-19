@@ -2,7 +2,7 @@
 // Full offline support with app shell caching, audio IndexedDB caching,
 // graceful updates, and background sync
 
-const CACHE_VERSION = 49;
+const CACHE_VERSION = 50;
 const CACHE_NAME = `aurdour-v${CACHE_VERSION}`;
 const AUDIO_CACHE_NAME = 'aurdour-audio-v1';
 

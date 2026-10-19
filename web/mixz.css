@@ -920,6 +920,12 @@ body.pro-mode #pro-mode-toggle { height: 34px; padding: 3px; }
 .dj-setting-words .dj-setting-text { width: 100%; }
 .dj-setting-words textarea { width: 100%; margin-top: 6px; resize: vertical; font-family: var(--font-mono); font-size: 0.74rem; color: var(--mz-text); background: var(--mz-inset); border: 1px solid var(--mz-line-hi); border-radius: 8px; padding: 6px 8px; }
 
+/* Host a lobby (Settings) */
+.dj-lobby-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.dj-lobby-row input { flex: 1; min-width: 0; background: var(--bg-dark, #0b0d12); color: inherit; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 6px 8px; font: inherit; }
+.dj-lobby-row button { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 6px 12px; font: inherit; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
+.dj-lobby-link { word-break: break-all; }
+
 /* Agent drafts and receipts (AgentQueue.js) */
 .agents-panel { position: fixed; top: 64px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; z-index: 900; background: #0f1118; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 12px; color: #f1f3f8; }
 .agents-panel.hidden { display: none; }

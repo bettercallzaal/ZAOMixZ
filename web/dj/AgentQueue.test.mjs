@@ -6,7 +6,7 @@ let failed = 0, passed = 0;
 const check = (label, cond) => { cond ? passed++ : failed++; console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${label}`); };
 globalThis.document = { getElementById: () => null };
 
-const { ApprovalQueue, cleanProposal, queueHtml, EXPIRE_MS, PENDING_PER_AGENT, RECEIPTS_KEY, REFUSALS_KEY, PROPOSAL_MAX } = await import('./AgentQueue.js');
+const { ApprovalQueue, cleanProposal, queueHtml, EXPIRE_MS, PENDING_PER_AGENT, RECEIPTS_KEY, REFUSALS_KEY, PROPOSAL_MAX, RATE_MS } = await import('./AgentQueue.js');
 const { AgentHost, cleanAgentMessage } = await import('./AgentLink.js');
 
 const store = () => ({ data: {}, getItem(k) { return this.data[k] ?? null; }, setItem(k, v) { this.data[k] = v; } });
@@ -23,14 +23,15 @@ console.log('Nothing is proposed without a grant, and every try is on record');
     let now = t0;
     const st = store();
     const q = new ApprovalQueue({ storage: st, now: () => now });
-    const no = q.propose({ id: 'a2', name: 'Other', perms: {} }, { kind: 'comment', text: 'hello' });
+    const P = (a, d, o) => { now += 21000; return q.propose(a, d, o); };   // past the rate limit each time
+    const no = P({ id: 'a2', name: 'Other', perms: {} }, { kind: 'comment', text: 'hello' });
     check('a kind the DJ never granted is refused', !no.ok && no.reason === 'not granted' && q.pending.length === 0);
     check('and the refusal is on record', q.refusals.at(-1).reason === 'not granted' && q.refusals.at(-1).agent === 'Other' && q.refusals.at(-1).count === 1);
-    check('a granted comment does not stretch to questions', !q.propose(bot, { kind: 'question', text: 'q?' }).ok);
-    const ok = q.propose(bot, { kind: 'comment', text: 'great set' });
+    check('a granted comment does not stretch to questions', !P(bot, { kind: 'question', text: 'q?' }).ok);
+    const ok = P(bot, { kind: 'comment', text: 'great set' });
     check('a granted kind waits for the DJ', ok.ok && q.pending.length === 1 && q.receipts.at(-1).outcome === 'waiting');
-    check('muted: refused, on record', !q.propose(bot, { kind: 'comment', text: 'x' }, { muted: true }).ok && q.refusals.at(-1).reason === 'muted');
-    for (let i = 0; i < PENDING_PER_AGENT; i++) q.propose(bot, { kind: 'comment', text: `n${i}` });
+    check('muted: refused, on record', !P(bot, { kind: 'comment', text: 'x' }, { muted: true }).ok && q.refusals.at(-1).reason === 'muted');
+    for (let i = 0; i < PENDING_PER_AGENT; i++) P(bot, { kind: 'comment', text: `n${i}` });
     check(`at most ${PENDING_PER_AGENT} waiting per agent`, q.pending.filter((x) => x.agentId === 'a1').length === PENDING_PER_AGENT && q.refusals.at(-1).reason === 'too many waiting');
 
     console.log('The DJ decides');
@@ -42,12 +43,12 @@ console.log('Nothing is proposed without a grant, and every try is on record');
     const de = q.decide(third.pid, false);
     check('declined', de.outcome === 'declined' && q.pending.length === 0);
     check('deciding twice does nothing', q.decide(first.pid, true) === null);
-    const blank = q.propose(bot, { kind: 'comment', text: 'keep me' }).item;
+    const blank = P(bot, { kind: 'comment', text: 'keep me' }).item;
     check('APPROVE with the text emptied does not publish the original: it keeps waiting', q.decide(blank.pid, true, { text: '   ' }) === null && q.pending.includes(blank));
     q.decide(blank.pid, false);
 
     console.log('Expiry and receipts');
-    q.propose(bot, { kind: 'comment', text: 'late' });
+    P(bot, { kind: 'comment', text: 'late' });
     now += EXPIRE_MS - 1; q.expire();
     check('still waiting just before ten minutes', q.pending.length === 1);
     now += 1; const gone = q.expire();
@@ -61,7 +62,8 @@ console.log('Through the desk');
 {
     const relays = [];
     class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: store() });
+    let clock = t0;
+    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), now: () => (clock += 21000) });
     const a = host.add('Alpha');
     await host.start();
     const r = relays[0];
@@ -83,6 +85,43 @@ console.log('Through the desk');
     host.remove(a.agent.id);
     check('cutting off an agent drops its drafts, with a receipt', host.pending.length === 0 && host.queue.receipts.at(-1).reason === 'agent removed');
     check('a propose message keeps only kind and text', JSON.stringify(cleanAgentMessage({ t: 'propose', kind: 'comment', text: 'x', agent: 'Z', publish: true })) === JSON.stringify({ t: 'propose', kind: 'comment', text: 'x' }));
+}
+
+console.log('Gate 5: one draft per agent every 20 seconds, and the chat filter');
+{
+    let now = t0;
+    const q = new ApprovalQueue({ storage: store(), now: () => now });
+    const g = { id: 'g', name: 'Granted', perms: { comment: true, question: true } };
+    check('the first draft waits', q.propose(g, { kind: 'comment', text: 'one' }).ok);
+    now += RATE_MS - 1;
+    check('another inside 20 seconds is refused as too fast', q.propose(g, { kind: 'question', text: 'two' }).reason === 'too fast');
+    now += RATE_MS - 1;
+    check('a try that was refused still counts, so a pushy agent stays held back', q.propose(g, { kind: 'comment', text: 'three' }).reason === 'too fast');
+    now += RATE_MS;
+    check('after a quiet 20 seconds it may send again', q.propose(g, { kind: 'comment', text: 'four' }).ok);
+    check('other agents have their own clock', q.propose({ id: 'h', name: 'Other', perms: { comment: true } }, { kind: 'comment', text: 'hi' }).ok);
+    now += RATE_MS;
+    check('a link is refused, however it is written', q.propose(g, { kind: 'comment', text: 'go to evil dot com now' }).reason === 'link');
+    now += RATE_MS;
+    check('a word the DJ blocked is refused', q.propose(g, { kind: 'comment', text: 'you are a badword' }, { blocked: ['badword'] }).reason === 'blocked word');
+    now += RATE_MS;
+    const ok = q.propose(g, { kind: 'comment', text: '\uff26\uff35\uff2c\uff2c wide letters' });
+    check('the text that waits is the filter\'s cleaned text', ok.ok && ok.item.text === 'FULL wide letters');
+    check('refusals for these are counted like the rest', ['too fast', 'link', 'blocked word'].every((reason) => q.refusals.some((r) => r.reason === reason)));
+}
+{
+    const relays = [];
+    class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
+    const st = store();
+    st.setItem('mixz-chat-block', 'rude\nnope');
+    let clock = t0;
+    const host = new AgentHost({ RelayClass: FakeRelay, storage: st, now: () => (clock += 21000) });
+    const a = host.add('Alpha');
+    host.grant(a.agent.id, 'comment', true);
+    await host.start();
+    relays[0].onMessage({ t: 'hello' });
+    relays[0].onMessage({ t: 'propose', kind: 'comment', text: 'that was rude' });
+    check('the desk uses the DJ\'s own blocked words for agents too', host.pending.length === 0 && relays[0].sent.at(-1).reason === 'blocked word');
 }
 
 console.log('An agent sending junk cannot wipe the record');

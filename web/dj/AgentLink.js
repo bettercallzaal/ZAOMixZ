@@ -23,6 +23,7 @@ import { newToken, validToken, Relay } from './RemoteLink.js';
 import { OUT_TYPES } from './StreamEvents.js';
 import { ApprovalQueue, PROPOSAL_KINDS, queueHtml } from './AgentQueue.js';
 import { agentPostData } from './AgentPost.js';
+import { CHAT_BLOCK_KEY } from './Settings.js';
 
 export const AGENT_KEY_PREFIX = 'mza1.';
 export const AGENTS_KEY = 'mixz-agents';
@@ -76,15 +77,18 @@ export const forAgents = (env) => !!env && env.v === 1 && OUT_TYPES.includes(env
 export class AgentHost {
     // RelayClass and storage are injectable for tests.
     // publish(type, data): where an approved draft goes out, as a stream event (StreamEvents.emit).
-    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null } = {}) {
-        Object.assign(this, { RelayClass, storage, onChange, publish });
+    constructor({ RelayClass = Relay, storage = globalThis.localStorage, onChange = null, publish = null, now = () => Date.now() } = {}) {
+        Object.assign(this, { RelayClass, storage, onChange, publish, now });
         this.agents = this._load();
         this.links = new Map();   // agent id -> { relay, seen }
-        this.queue = new ApprovalQueue({ storage });   // drafts waiting for the DJ, and the receipts
+        this.queue = new ApprovalQueue({ storage, now });   // drafts waiting for the DJ, and the receipts
         try { this.muted = this.storage?.getItem(MUTED_KEY) === 'on'; } catch (e) { this.muted = false; }
     }
 
     get pending() { return this.queue.pending; }
+
+    // The DJ's words never shown from chat (Settings) hold agent drafts back too.
+    _blocked() { try { return String(this.storage?.getItem(CHAT_BLOCK_KEY) || '').split('\n').map((w) => w.trim()).filter(Boolean); } catch (e) { return []; } }
 
     connectedCount(now = Date.now()) { return this.agents.filter((a) => this.connected(a.id, now)).length; }
 
@@ -171,7 +175,7 @@ export class AgentHost {
         link.seen = Date.now();
         if (msg.t === 'propose') {
             // Every draft leaves a receipt, a refused one too (muted, not granted, too many)
-            const r = this.queue.propose(agent, msg, { muted: this.muted });
+            const r = this.queue.propose(agent, msg, { muted: this.muted, blocked: this._blocked() });
             link.relay.send({ t: 'proposal', status: r.ok ? 'waiting' : 'refused', reason: r.reason || null, pid: r.item?.pid || null });
             this.onChange?.();
             return;

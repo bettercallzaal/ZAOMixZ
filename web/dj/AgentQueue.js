@@ -12,15 +12,20 @@
 // sending junk cannot push the DJ's decisions out of the log. Where an approved item goes (chat, the stream) is a later gate:
 // today approving only records it.
 //
+// Gate 5: a granted agent may send one draft every RATE_MS, and every draft goes through the
+// same filter as stream chat (ChatFilter.moderate): no links, none of the DJ's blocked words.
+//
 // Pure apart from storage, which is injected: see AgentQueue.test.mjs.
 
 import { esc } from './Html.js';
+import { moderate } from './ChatFilter.js';
 
 export const PROPOSAL_KINDS = ['comment', 'question'];
 export const PROPOSAL_MAX = 280;            // characters of one draft
 export const EXPIRE_MS = 10 * 60 * 1000;    // undecided this long: expired
 export const PENDING_PER_AGENT = 3;         // drafts one agent may have waiting at once
 export const PENDING_MAX = 20;
+export const RATE_MS = 20000;               // one draft per agent this often (gate 5)
 export const RECEIPTS_KEY = 'mixz-agent-receipts';
 export const RECEIPTS_MAX = 1000;           // decisions and drafts
 export const REFUSALS_KEY = 'mixz-agent-refusals';
@@ -40,6 +45,7 @@ export class ApprovalQueue {
         this.receipts = this._load(RECEIPTS_KEY, RECEIPTS_MAX);
         this.refusals = this._load(REFUSALS_KEY, REFUSALS_MAX);   // { agentId, agent, kind, reason, count, first, last }
         this._n = 0;
+        this._lastTry = new Map();   // agent id -> when it last sent a granted draft
     }
 
     _load(key, max) { try { const r = JSON.parse(this.storage?.getItem(key) || '[]'); return Array.isArray(r) ? r.slice(-max) : []; } catch (e) { return []; } }
@@ -67,7 +73,8 @@ export class ApprovalQueue {
 
     // A draft from `agent` ({ id, name, perms }, as the desk knows it). Every call leaves a
     // receipt. { ok: true, item } or { ok: false, reason }.
-    propose(agent, raw, { muted = false } = {}) {
+    // `blocked`: the DJ's words never shown from chat (Settings).
+    propose(agent, raw, { muted = false, blocked = [] } = {}) {
         const who = { agentId: agent.id, agent: agent.name };
         const p = cleanProposal(raw);
         const kind = PROPOSAL_KINDS.includes(raw?.kind) ? raw.kind : null;
@@ -75,6 +82,13 @@ export class ApprovalQueue {
         const refuse = (reason) => { this._refusal(who, p.kind, reason); return { ok: false, reason }; };
         if (muted) return refuse('muted');
         if (!agent.perms?.[p.kind]) return refuse('not granted');
+        // Rate: every try counts, so an agent that keeps sending stays held back
+        const last = this._lastTry.get(agent.id);
+        this._lastTry.set(agent.id, this.now());
+        if (last != null && this.now() - last < RATE_MS) return refuse('too fast');
+        const mod = moderate(p.text, { blocked });
+        if (!mod.ok) return refuse(mod.reason === 'link' ? 'link' : mod.reason === 'blocked word' ? 'blocked word' : 'empty');
+        p.text = mod.text;
         if (this.pending.filter((x) => x.agentId === agent.id).length >= PENDING_PER_AGENT) return refuse('too many waiting');
         if (this.pending.length >= PENDING_MAX) return refuse('queue full');
         const item = { pid: `${agent.id}-${this.now().toString(36)}-${(this._n++).toString(36)}`, ...who, ...p, at: this.now() };

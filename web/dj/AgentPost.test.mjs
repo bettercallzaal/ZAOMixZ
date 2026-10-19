@@ -24,21 +24,29 @@ console.log('Only the DJ\'s approval publishes');
     const posts = [];
     const relays = [];
     class FakeRelay { constructor(o) { Object.assign(this, o); this.sent = []; relays.push(this); } async open() {} send(m) { this.sent.push(m); } close() {} }
-    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), publish: (type, data) => posts.push({ type, data }) });
+    let clock = Date.UTC(2026, 9, 19);
+    const host = new AgentHost({ RelayClass: FakeRelay, storage: store(), publish: (type, data) => posts.push({ type, data }), now: () => (clock += 21000) });
     const a = host.add('Hype Bot');
     host.grant(a.agent.id, 'comment', true);
     await host.start();
     const r = relays[0];
     r.onMessage({ t: 'hello' });
     for (const text of ['one', 'two', 'three']) r.onMessage({ t: 'propose', kind: 'comment', text });
-    check('a draft waiting publishes nothing', posts.length === 0);
+    check('three drafts waiting publish nothing', host.pending.length === 3 && posts.length === 0);
     const [p1, p2, p3] = host.pending.map((x) => x.pid);
     host.decide(p1, true);
     check('approving publishes one agent.post', posts.length === 1 && posts[0].type === 'agent.post' && posts[0].data.text === 'one' && posts[0].data.ai === true);
     host.decide(p2, false);
     check('declining publishes nothing', posts.length === 1);
+    // A mute that lands between the panel drawing and the DJ's tap: the draft is still there
+    host.muted = true;
+    host.decide(p3, true);
+    check('approving while muted publishes nothing', posts.length === 1);
+    host.muted = false;
+    r.onMessage({ t: 'propose', kind: 'comment', text: 'four' });
+    const p4 = host.pending.at(-1).pid;
     host.setMuted(true);
-    check('muting drops the rest, so nothing is left to publish', host.pending.length === 0 && host.decide(p3, true) === null && posts.length === 1);
+    check('muting drops the rest, so nothing is left to publish', host.pending.length === 0 && host.decide(p4, true) === null && posts.length === 1);
 }
 
 console.log('The overlay card');

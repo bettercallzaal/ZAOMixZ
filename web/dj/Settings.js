@@ -1,5 +1,52 @@
 // Settings.js — Settings panel UI for preferences, output routing, crossfader curve, key shift
 
+// The DJ's on/off switches, in one place (Zaal, 18 Oct 2026: "a simple settings page").
+// Each one already exists somewhere in the app and keeps its own saved value; this list only
+// says what it is, what it does and its safe default, and flips it through its own module.
+//   key: where the value is saved. read(): the value, with the module's own default when
+//   nothing is saved. apply(dj, on): set it the way the module's own button would.
+export const DJ_SETTINGS = [
+    {
+        id: 'auto-requests', key: 'mixz-auto-requests', label: 'Auto-play requests', safe: false,
+        hint: 'On: DJ MixZ plays listeners\' phone requests by itself, oldest first. Off: each one waits for you to tap PLAY NEXT. Chat requests always wait.',
+        read: (get) => get('mixz-auto-requests') === 'on',
+        apply: (dj, on) => dj.remote?.setAutoPlay?.(on),
+    },
+    {
+        id: 'dead-air', key: 'mixz-deadair', label: 'Auto play on silence', safe: false,
+        hint: 'On: after 5 seconds of silence the desk hands the decks back to DJ MixZ, skips a dead song, or starts a SongChainn set.',
+        read: (get) => get('mixz-deadair') === 'on',
+        apply: (dj, on) => dj.deadAir?.set?.(on),
+    },
+    {
+        id: 'lights', key: 'mixz-lights', label: 'Controller lights', safe: true,
+        hint: 'On: the buttons on a connected DDJ-SB3 light up to match the decks.',
+        read: (get) => get('mixz-lights') !== 'off',
+        apply: (dj, on) => dj.lights?.setEnabled?.(on),
+    },
+    {
+        id: 'pro', key: 'aurdour-pro-mode', label: 'PRO view', safe: false,
+        hint: 'On: every tool on the decks and mixer. Off: the simple view, with only what is needed to mix.',
+        read: (get) => get('aurdour-pro-mode') === '1',
+        apply: (dj, on, doc = typeof document !== 'undefined' ? document : null) => {
+            if (!doc) return;
+            if (doc.body.classList.contains('pro-mode') !== !!on) doc.getElementById('pro-mode-toggle')?.click();
+        },
+    },
+];
+
+const storageGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+// The rows for the panel: plain text from the list above only, no outside data.
+export function djSettingsHtml(get = storageGet) {
+    return `<div class="settings-label">DJ SETTINGS</div>` + DJ_SETTINGS.map((s) => {
+        const on = s.read(get);
+        return `<label class="dj-setting" data-setting="${s.id}">`
+            + `<span class="dj-setting-text"><b>${s.label}</b><small>${s.hint}</small><small class="dj-setting-default">Safe default: ${s.safe ? 'on' : 'off'}</small></span>`
+            + `<input type="checkbox" class="dj-setting-switch" data-setting="${s.id}"${on ? ' checked' : ''} aria-label="${s.label}"></label>`;
+    }).join('');
+}
+
 export class Settings {
     constructor(djPlayer) {
         this.dj = djPlayer;
@@ -18,6 +65,22 @@ export class Settings {
         this._initKeyShiftInline();
     }
 
+    // The DJ switches at the top of the panel, drawn fresh each time it opens, since a switch
+    // can also be flipped elsewhere (the AUTO-PLAY button on the request line, PRO, AUTO PLAY).
+    renderDjSettings() {
+        const box = document.getElementById('dj-settings');
+        if (!box) return;
+        box.innerHTML = djSettingsHtml();
+        if (!box.dataset.wired) {
+            box.dataset.wired = '1';
+            box.addEventListener('change', (e) => {
+                const id = e.target?.dataset?.setting;
+                const s = DJ_SETTINGS.find((x) => x.id === id);
+                if (s) { s.apply(this.dj, !!e.target.checked); this.renderDjSettings(); }
+            });
+        }
+    }
+
     _initUI() {
         const settingsBtn = document.getElementById('settings-btn');
         const settingsPanel = document.getElementById('settings-panel');
@@ -27,6 +90,7 @@ export class Settings {
             settingsBtn.addEventListener('click', () => {
                 this.panelOpen = !this.panelOpen;
                 settingsPanel?.classList.toggle('hidden', !this.panelOpen);
+                if (this.panelOpen) this.renderDjSettings();
             });
         }
 

@@ -182,12 +182,10 @@
                 <a class="btn-toolbar btn-sm btn-feedback btn-zm" id="zm-btn" href="https://t.me/+WVf5XsztOMc4OGZk" target="_blank" rel="noopener" title="Join ZM, the ZAO Music community on Telegram (Discord: discord.gg/KgJM52Wu4d)">ZM</a>
                 <a class="btn-toolbar btn-sm btn-feedback" id="feedback-btn" href="/feedback" target="_blank" rel="noopener" title="Tell us what works, what broke, what you want next">FEEDBACK</a>
                 <button class="btn-toolbar btn-sm btn-help" id="shortcuts-btn" title="Keyboard shortcuts (? or H)">?</button>
+                <button class="btn-toolbar btn-sm" id="settings-btn" title="Settings: auto-play, lights, PRO view">SETTINGS</button>
                 <button class="btn-toolbar btn-sm" id="tutorial-restart" title="Restart tutorial" style="display:none"></button>
             </div>
 
-            <div class="toolbar-group pro-only">
-                <button class="btn-toolbar btn-sm" id="settings-btn" title="Settings">SETTINGS</button>
-            </div>
 
             <div class="master-section" data-tutorial="master">
                 <label class="master-label pro-only">BOOTH</label>
@@ -1298,7 +1296,8 @@
                 <button class="btn-toolbar btn-sm" id="settings-close">X</button>
             </div>
             <div class="settings-body">
-                <div class="settings-group">
+                <div class="settings-group dj-settings" id="dj-settings"></div>
+                <div class="settings-group pro-only">
                     <label class="settings-label">Crossfader Curve</label>
                     <select class="toolbar-select" id="setting-cf-curve">
                         <option value="equal-power">Equal Power</option>
@@ -1306,22 +1305,22 @@
                         <option value="cut">Cut</option>
                     </select>
                 </div>
-                <div class="settings-group">
+                <div class="settings-group pro-only">
                     <label class="settings-label">Key Shift A</label>
                     <input type="range" id="keyshift-a" min="-6" max="6" value="0" step="1" class="hp-slider">
                     <span class="toolbar-text mono" id="keyshift-a-display">0</span>
                 </div>
-                <div class="settings-group">
+                <div class="settings-group pro-only">
                     <label class="settings-label">Key Shift B</label>
                     <input type="range" id="keyshift-b" min="-6" max="6" value="0" step="1" class="hp-slider">
                     <span class="toolbar-text mono" id="keyshift-b-display">0</span>
                 </div>
-                <div class="settings-group">
+                <div class="settings-group pro-only">
                     <label class="settings-label">MIDI Profiles</label>
                     <div id="midi-profiles-list" class="midi-profiles-list"></div>
                     <button class="btn-toolbar btn-sm" id="midi-save-profile">SAVE PROFILE</button>
                 </div>
-                <div class="settings-group">
+                <div class="settings-group pro-only">
                     <label class="settings-label">Data</label>
                     <div class="settings-actions">
                         <button class="btn-toolbar btn-sm" id="settings-export">EXPORT ALL</button>

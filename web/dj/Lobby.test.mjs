@@ -36,6 +36,8 @@ check('a changed last-played time is refused', (await readClaim(JSON.stringify(o
 check('junk is refused', (await readClaim('nope', 'main')) === null && (await readClaim('{}', 'main')) === null);
 
 console.log('Who holds a lobby');
+const NH = (a, b) => nextHolder(a, b, t0 + 120 * MIN);   // the page's clock, after every claim below
+
 const c = (pub, ts, playedAt) => ({ room: 'main', name: 'Main', pub, ts, playedAt });
 check('free when nobody claimed it', canClaim(null, B.pub, t0).ok);
 check('the holder may claim it again (a reload)', canClaim(c(A.pub, t0, t0), A.pub, t0 + MIN).ok);
@@ -44,13 +46,14 @@ check('held while its host played in the last 30 minutes, with how long ago', !t
 check('free once its host has been silent over 30 minutes', canClaim(c(A.pub, t0 + 40 * MIN, t0), B.pub, t0 + 31 * MIN).ok);
 check('the desk being open is not playing: the claim time counts, not the heartbeat', !roomHeld(c(A.pub, t0 + 60 * MIN, t0), t0 + 60 * MIN));
 const held = c(A.pub, t0 + 10 * MIN, t0 + 10 * MIN);
-check('a page ignores another host while the holder is playing', nextHolder(held, c(B.pub, t0 + 20 * MIN, t0 + 20 * MIN)) === held);
+check('a page ignores another host while the holder is playing', NH(held, c(B.pub, t0 + 20 * MIN, t0 + 20 * MIN)) === held);
 const late = c(B.pub, t0 + 41 * MIN, t0 + 41 * MIN);
-check('and follows the new host after 30 silent minutes', nextHolder(held, late) === late);
-check('then the old host coming back is ignored while the new one plays', nextHolder(late, c(A.pub, t0 + 45 * MIN, t0 + 45 * MIN)) === late);
+check('and follows the new host after 30 silent minutes', NH(held, late) === late);
+check('then the old host coming back is ignored while the new one plays', NH(late, c(A.pub, t0 + 45 * MIN, t0 + 45 * MIN)) === late);
 check('a claim dated more than two minutes ahead is ignored', fromTheFuture(c(B.pub, t0 + 3 * MIN, t0), t0) && !fromTheFuture(c(B.pub, t0 + MIN, t0), t0));
-check('the same host\'s newer claim replaces its older one, not the other way', nextHolder(held, c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN)).ts === t0 + 11 * MIN && nextHolder(c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN), held).ts === t0 + 11 * MIN);
+check('the same host\'s newer claim replaces its older one, not the other way', NH(held, c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN)).ts === t0 + 11 * MIN && NH(c(A.pub, t0 + 11 * MIN, t0 + 11 * MIN), held).ts === t0 + 11 * MIN);
 
+check('a claim from the future is never followed, whoever calls nextHolder', nextHolder(held, c(B.pub, t0 + 60 * MIN, t0 + 60 * MIN), t0 + 50 * MIN) === held && nextHolder(null, c(B.pub, Date.now() + 10 * MIN, Date.now())) === null);
 console.log('Two desks and one lobby, through the relay');
 {
     const retained = new Map();
@@ -122,12 +125,16 @@ console.log('A desk that cannot reach the relays does not claim');
         : { connected: true, on() {}, subscribe(_t, _o, cb) { cb(null); }, publish() {} });
     const desk2 = new LiveMixHost(() => [], { storage: { getItem: () => null, setItem() {} }, now: () => t0, connect: async () => mixed(), wait: () => new Promise((r) => setTimeout(r, 20)) });
     check('one silent relay is fine while the other confirms', (await desk2.claimRoom('Main Stage')).ok);
+    const refusing = () => ({ connected: true, on() {}, subscribe(_t, _o, cb) { cb(null, [{ topic: _t, qos: 128 }]); }, publish() {} });
+    const desk3 = new LiveMixHost(() => [], { storage: { getItem: () => null, setItem() {} }, now: () => t0, connect: async () => refusing(), wait: () => new Promise((r) => setTimeout(r, 20)) });
+    check('a relay that grants QoS 128 has said no: offline, not free', (await desk3.claimRoom('Main Stage')).why === 'offline');
 }
 
 console.log('The desk\'s lobby box');
 check('the box asks for a name when no lobby is held', lobbyHtml(null).includes('id="dj-lobby-name"') && lobbyHtml(null).includes('id="dj-lobby-claim"'));
 const box = lobbyHtml({ room: 'main', name: '<img src=x onerror=1>' }, 'https://z');
 check('when held it shows the link and LET IT GO, the name escaped', box.includes('https://z/mix.html#lobby=main') && box.includes('id="dj-lobby-release"') && !box.includes('<img') && box.includes('&lt;img'));
+check('the desk offers a new mix link', lobbyHtml(null).includes('id="dj-newmix"'));
 check('offline says why it will not claim', lobbyStatus({ ok: false, why: 'offline' }).includes('not safe to claim'));
 check('a taken lobby says how long ago its host played', lobbyStatus({ ok: false, why: 'taken', minutes: 1, name: 'Main' }).includes('1 minute ago') && lobbyStatus({ ok: false, why: 'taken', minutes: 7, name: 'Main' }).includes('7 minutes ago'));
 

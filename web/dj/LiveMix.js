@@ -100,15 +100,19 @@ export function canClaim(existing, pub, now) {
 
 // Who a page follows, given the holder so far and a claim that just arrived. The same host's
 // newer claim replaces its old one; another host's counts only once the holder had been silent
-// for 30 minutes when that claim was made.
-export function nextHolder(current, incoming) {
-    if (!incoming) return current;
+// for 30 minutes when that claim was made. A claim dated in the future (by this clock, `now`) is
+// never followed, whoever calls this.
+export function nextHolder(current, incoming, now = Date.now()) {
+    if (!incoming || fromTheFuture(incoming, now)) return current;
     if (!current) return incoming;
     if (incoming.pub === current.pub) return incoming.ts > current.ts ? incoming : current;
     return incoming.ts - current.playedAt >= LOBBY_HOLD_MS ? incoming : current;
 }
 
 export const validKey = (k) => typeof k === 'string' && KEY_RE.test(k);
+// LIVE NOW comes from when the desk signed the set, not from when this page heard it: an old
+// signed set replayed on the relay does not look live.
+export const isLiveNow = (signedAt, now = Date.now()) => Number.isFinite(signedAt) && now - signedAt < LIVE_FOR_MS && signedAt - now < CLOCK_SLACK_MS;
 export const liveUrl = (origin, pub) => `${origin.replace(/\/$/, '')}/mix.html#live=${pub}`;
 
 // What a mix.html address holds: { live, m, lobby } (any may be '').
@@ -249,17 +253,32 @@ export class LiveMixHost {
         }
     }
 
+    // A new mix link now, instead of waiting for six quiet hours. The old link keeps the set it
+    // had; nothing more is sent to it.
+    newSet() {
+        if (this._beat) clearInterval(this._beat);
+        this._beat = null;
+        this.room = null;
+        this.lobby = null;
+        this.before = [];
+        this._last = '';
+        this._payload = null;
+        for (const c of this.clients) { try { c.end?.(true); } catch (e) { /* gone */ } }
+        this.clients = [];
+        try { this.storage?.removeItem?.(STORE_KEY); } catch (e) { /* no storage */ }
+    }
+
     // ── Lobbies ──
 
     async _heard(topic, payload) {
         if (!this.room || topic !== this.room.topic) return;
         const c = await readClaim(payload, this.room.room);
         if (!c || fromTheFuture(c, this.now())) return;
-        this._claims.set(topic, nextHolder(this._claims.get(topic), c));
+        this._claims.set(topic, nextHolder(this._claims.get(topic), c, this.now()));
         if (!this.room || this.room.topic !== topic) return;   // let go or moved on while the claim was checked
         // Someone else claimed it after this desk had been silent 30 minutes: step back
         const mine = { pub: this.lobby.pub, ts: this.now(), playedAt: this.playedAt };
-        if (!this.room.checking && c.pub !== this.lobby.pub && nextHolder(mine, c) === c) {
+        if (!this.room.checking && c.pub !== this.lobby.pub && nextHolder(mine, c, this.now()) === c) {
             const lost = this.room;
             this.room = null;
             this.onRoomLost?.(lost);
@@ -269,7 +288,8 @@ export class LiveMixHost {
     // True once relay `c` is connected and has acknowledged the subscription (8 s at most).
     async _subscribed(c, topic) {
         const ready = new Promise((resolve) => {
-            const sub = () => { try { c.subscribe(topic, { qos: 1 }, (err) => resolve(!err)); } catch (e) { resolve(false); } };
+            // A grant of QoS 128 is the relay saying no
+            const sub = () => { try { c.subscribe(topic, { qos: 1 }, (err, granted) => resolve(!err && !(granted || []).some((g) => g?.qos === 128))); } catch (e) { resolve(false); } };
             if (!c?.subscribe) return resolve(false);
             if (c.connected) sub(); else c.on?.('connect', sub);
         });
@@ -345,8 +365,7 @@ export async function watchRoom(room, onHolder, { connect = null } = {}) {
             c.on('error', () => { /* the other relay carries on */ });
             c.on('message', async (_t, payload) => {
                 const read = await readClaim(payload.toString(), room);
-                const claim = fromTheFuture(read, Date.now()) ? null : read;
-                const next = nextHolder(holder, claim);
+                const next = nextHolder(holder, read, Date.now());
                 if (next && next !== holder) { holder = next; onHolder(holder); }
             });
             clients.push(c);

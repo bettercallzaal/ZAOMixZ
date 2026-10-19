@@ -8,6 +8,8 @@
 //
 // decide() is pure and runs under node: see DeadAir.test.mjs.
 
+import { every } from './Clock.js';
+
 export const SILENT_RMS = 0.0035;      // below this the master is as good as silent
 export const SILENT_FOR_MS = 5000;     // Zaal: "if silent for over 5 seconds"
 export const COOLDOWN_MS = 15000;      // after acting, give the fix time to make sound
@@ -33,7 +35,8 @@ export class DeadAir {
         this.rms = 0;
         this._buf = null;
         this._buildUI();
-        setInterval(() => this._tick(), 500);
+        // Clock.every, so it still listens while the DJ is in another tab
+        every(500, () => this._tick());
     }
 
     set(on) {

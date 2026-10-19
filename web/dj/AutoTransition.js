@@ -2,6 +2,12 @@
 // Supports multiple transition types: blend, echo-out, cut, filter-sweep
 // Uses equal-power (cos/sin) crossfade curve for smooth audio transitions
 // Includes gradual BPM matching during transitions
+// Driven by Clock.every, not requestAnimationFrame: a hidden tab stops animation frames, and a
+// mix must keep going while the DJ is in another tab.
+
+import { every } from './Clock.js';
+
+export const TICK_MS = 20;
 
 export class AutoTransition {
     constructor(audioRouter, mixer, decks) {
@@ -9,7 +15,7 @@ export class AutoTransition {
         this.mixer = mixer;
         this.decks = decks;
         this.running = false;
-        this.animFrame = null;
+        this._stopTick = null;
         this.startTime = 0;
         this.duration = 8; // seconds
         this.direction = 'AtoB'; // AtoB or BtoA
@@ -93,7 +99,7 @@ export class AutoTransition {
 
     cancel() {
         this.running = false;
-        if (this.animFrame) cancelAnimationFrame(this.animFrame);
+        this._tickOff();
         this._cleanupEffects();
         const btn = document.getElementById('auto-trans-btn');
         if (btn) { btn.textContent = 'AUTO'; btn.classList.remove('active'); }
@@ -120,7 +126,13 @@ export class AutoTransition {
         // Notify broadcast about transition start
         if (this.onTransitionStateChange) this.onTransitionStateChange(true, this.direction);
 
+        this._tickOff();
+        this._stopTick = every(TICK_MS, () => this._animate());
         this._animate();
+    }
+
+    _tickOff() {
+        if (this._stopTick) { this._stopTick(); this._stopTick = null; }
     }
 
     _initTransitionEffects() {
@@ -157,7 +169,7 @@ export class AutoTransition {
     }
 
     _animate() {
-        if (!this.running) return;
+        if (!this.running) { this._tickOff(); return; }
 
         const elapsed = (performance.now() - this.startTime) / 1000;
         const progress = Math.min(1, elapsed / this.duration);
@@ -191,7 +203,6 @@ export class AutoTransition {
             return;
         }
 
-        this.animFrame = requestAnimationFrame(() => this._animate());
     }
 
     // ===== TRANSITION TYPES =====
@@ -411,6 +422,7 @@ export class AutoTransition {
 
     _finishTransition() {
         this.running = false;
+        this._tickOff();
 
         // Stop the source deck
         const sourceDeck = this.direction === 'AtoB' ? this.decks.A : this.decks.B;

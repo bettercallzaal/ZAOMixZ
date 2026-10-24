@@ -1,1197 +1,1836 @@
 {
- "builtAt": "2026-10-21T23:59:34.387Z",
+ "builtAt": "2026-10-23T21:00:15.972Z",
  "songs": {
   "1": {
    "bpm": 101.7,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.14
   },
   "2": {
    "bpm": 111.1,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.325
   },
   "3": {
    "bpm": 92.3,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.215
   },
   "4": {
    "bpm": 127.7,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.445
   },
   "5": {
    "bpm": 98.4,
-   "key": "C"
+   "key": "C",
+   "beat": 0.115
   },
   "6": {
    "bpm": 93.8,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.32
   },
   "7": {
    "bpm": 130.4,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.365
   },
   "8": {
    "bpm": 139.5,
-   "key": "G"
+   "key": "G",
+   "beat": 0.03
   },
   "9": {
    "bpm": 90.9,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.165
   },
   "10": {
    "bpm": 133.3,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.23
   },
   "11": {
    "bpm": 84.5,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.675
   },
   "12": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.065
   },
   "13": {
    "bpm": 88.2,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.095
   },
   "14": {
    "bpm": 126.3,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0
   },
   "15": {
    "bpm": 120,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.07
   },
   "16": {
    "bpm": 71.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.44
   },
   "17": {
    "bpm": 100,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.055
   },
   "18": {
    "bpm": 82.2,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.645
   },
   "19": {
    "bpm": 120,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.015
   },
   "20": {
    "bpm": 75.9,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.15
   },
   "21": {
    "bpm": 95.2,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.48
   },
   "22": {
    "bpm": 93.8,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.515
   },
   "23": {
    "bpm": 95.2,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.445
   },
   "24": {
    "bpm": 125,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.015
   },
   "25": {
    "bpm": 105.3,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.17
   },
   "26": {
    "bpm": 100,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.325
   },
   "27": {
    "bpm": 109.1,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.345
   },
   "28": {
    "bpm": 73.2,
-   "key": "C"
+   "key": "C",
+   "beat": 0.63
   },
   "29": {
    "bpm": 71.4,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.62
   },
   "30": {
    "bpm": 171.4,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.295
   },
   "31": {
    "bpm": 166.7,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.18
   },
   "32": {
    "bpm": 93.8,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.29
   },
   "33": {
    "bpm": 122.4,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.14
   },
   "34": {
    "bpm": 90.9,
-   "key": "F#"
+   "key": "F#",
+   "beat": 0.595
   },
   "35": {
    "bpm": 87,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.52
   },
   "36": {
    "bpm": 146.3,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.135
   },
   "37": {
    "bpm": 81.1,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.16
   },
   "38": {
    "bpm": 101.7,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.225
   },
   "39": {
    "bpm": 130.4,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.4
   },
   "41": {
    "bpm": 98.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.215
   },
   "42": {
    "bpm": 98.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.205
   },
   "43": {
    "bpm": 101.7,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.195
   },
   "44": {
    "bpm": 129,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.11
   },
   "45": {
    "bpm": 109.1,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.25
   },
   "46": {
    "bpm": 103.4,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.005
   },
   "47": {
    "bpm": 127.7,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.18
   },
   "48": {
    "bpm": 120,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.195
   },
   "49": {
    "bpm": 101.7,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.14
   },
   "50": {
    "bpm": 133.3,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.13
   },
   "51": {
    "bpm": 133.3,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0
   },
   "52": {
    "bpm": 146.3,
-   "key": "C#"
+   "key": "C#",
+   "beat": 0.195
   },
   "53": {
    "bpm": 126.3,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.16
   },
   "54": {
    "bpm": 100,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.295
   },
   "55": {
    "bpm": 120,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.165
   },
   "56": {
    "bpm": 103.4,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.425
   },
   "57": {
    "bpm": 74.1,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.76
   },
   "58": {
    "bpm": 92.3,
-   "key": "D"
+   "key": "D",
+   "beat": 0.295
   },
   "59": {
    "bpm": 103.4,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.51
   },
   "60": {
    "bpm": 113.2,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.215
   },
   "61": {
    "bpm": 74.1,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.22
   },
   "62": {
    "bpm": 80,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.42
   },
   "63": {
    "bpm": 115.4,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.37
   },
   "64": {
    "bpm": 134.8,
-   "key": "C"
+   "key": "C",
+   "beat": 0.005
   },
   "65": {
    "bpm": 130.4,
-   "key": "G"
+   "key": "G",
+   "beat": 0.3
   },
   "66": {
    "bpm": 130.4,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.185
   },
   "67": {
    "bpm": 122.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.12
   },
   "68": {
    "bpm": 125,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.235
   },
   "69": {
    "bpm": 133.3,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.08
   },
   "70": {
    "bpm": 176.5,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.19
   },
   "71": {
    "bpm": 75.9,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.085
   },
   "72": {
    "bpm": 96.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.095
   },
   "73": {
    "bpm": 109.1,
-   "key": "F"
+   "key": "F",
+   "beat": 0.465
   },
   "74": {
    "bpm": 153.8,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.12
   },
   "75": {
    "bpm": 115.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.1
   },
   "76": {
    "bpm": 153.8,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.035
   },
   "77": {
    "bpm": 95.2,
-   "key": "D#"
+   "key": "D#",
+   "beat": 0.34
   },
   "78": {
    "bpm": 81.1,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.66
   },
   "79": {
    "bpm": 80,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.03
   },
   "80": {
    "bpm": 70.6,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.135
   },
   "81": {
    "bpm": 83.3,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.65
   },
   "82": {
    "bpm": 87,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.595
   },
   "83": {
    "bpm": 87,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.375
   },
   "84": {
    "bpm": 81.1,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.435
   },
   "85": {
    "bpm": 105.3,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.51
   },
   "86": {
    "bpm": 105.3,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.125
   },
   "87": {
    "bpm": 100,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.205
   },
   "88": {
    "bpm": 70.6,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.305
   },
   "89": {
    "bpm": 93.8,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.27
   },
   "90": {
    "bpm": 101.7,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.41
   },
   "91": {
    "bpm": 101.7,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.11
   },
   "92": {
    "bpm": 153.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.37
   },
   "93": {
    "bpm": 105.3,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.11
   },
   "94": {
    "bpm": 126.3,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.365
   },
   "95": {
    "bpm": 92.3,
-   "key": "C#"
+   "key": "C#",
+   "beat": 0.095
   },
   "96": {
    "bpm": 85.7,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.355
   },
   "97": {
    "bpm": 90.9,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.095
   },
   "98": {
    "bpm": 122.4,
-   "key": "D#"
+   "key": "D#",
+   "beat": 0.145
   },
   "99": {
    "bpm": 133.3,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.145
   },
   "100": {
    "bpm": 98.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.3
   },
   "101": {
    "bpm": 96.8,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.61
   },
   "102": {
    "bpm": 95.2,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.085
   },
   "103": {
    "bpm": 101.7,
-   "key": "G#"
+   "key": "G#",
+   "beat": 0.545
   },
   "104": {
    "bpm": 98.4,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.47
   },
   "105": {
    "bpm": 89.6,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.32
   },
   "106": {
    "bpm": 101.7,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.545
   },
   "107": {
    "bpm": 81.1,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.245
   },
   "108": {
    "bpm": 93.8,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.3
   },
   "109": {
    "bpm": 84.5,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.125
   },
   "110": {
    "bpm": 73.2,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.275
   },
   "111": {
    "bpm": 120,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.18
   },
   "112": {
    "bpm": 96.8,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.59
   },
   "113": {
    "bpm": 133.3,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.17
   },
   "114": {
    "bpm": 142.9,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0
   },
   "115": {
    "bpm": 115.4,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.16
   },
   "116": {
    "bpm": 75.9,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.595
   },
   "117": {
    "bpm": 136.4,
-   "key": "G"
+   "key": "G",
+   "beat": 0.415
   },
   "118": {
    "bpm": 130.4,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.37
   },
   "119": {
    "bpm": 93.8,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.46
   },
   "120": {
    "bpm": 93.8,
-   "key": "C#"
+   "key": "C#",
+   "beat": 0.105
   },
   "121": {
    "bpm": 162.2,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.11
   },
   "122": {
    "bpm": 93.8,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.6
   },
   "123": {
    "bpm": 107.1,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.23
   },
   "124": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.33
   },
   "125": {
    "bpm": 89.6,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.56
   },
   "126": {
    "bpm": 92.3,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.585
   },
   "127": {
    "bpm": 162.2,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.11
   },
   "128": {
    "bpm": 90.9,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.435
   },
   "129": {
    "bpm": 153.8,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.145
   },
   "130": {
    "bpm": 89.6,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.08
   },
   "131": {
    "bpm": 96.8,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.325
   },
   "132": {
    "bpm": 96.8,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.26
   },
   "133": {
    "bpm": 93.8,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.275
   },
   "134": {
    "bpm": 96.8,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.185
   },
   "135": {
    "bpm": 120,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.26
   },
   "136": {
    "bpm": 93.8,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.505
   },
   "137": {
    "bpm": 133.3,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.34
   },
   "138": {
    "bpm": 166.7,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.125
   },
   "139": {
    "bpm": 122.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.39
   },
   "140": {
    "bpm": 93.8,
-   "key": "B"
+   "key": "B",
+   "beat": 0.485
   },
   "141": {
    "bpm": 120,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.105
   },
   "142": {
    "bpm": 100,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.09
   },
   "143": {
    "bpm": 100,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.285
   },
   "144": {
    "bpm": 89.6,
-   "key": "C"
+   "key": "C",
+   "beat": 0.535
   },
   "145": {
    "bpm": 111.1,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.035
   },
   "146": {
    "bpm": 90.9,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.345
   },
   "147": {
    "bpm": 146.3,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.07
   },
   "148": {
    "bpm": 166.7,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.17
   },
   "149": {
    "bpm": 87,
-   "key": "C"
+   "key": "C",
+   "beat": 0.59
   },
   "150": {
    "bpm": 81.1,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.26
   },
   "151": {
    "bpm": 139.5,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.405
   },
   "152": {
    "bpm": 93.8,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.48
   },
   "153": {
    "bpm": 80,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.035
   },
   "154": {
    "bpm": 75,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.435
   },
   "155": {
    "bpm": 96.8,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.385
   },
   "156": {
    "bpm": 98.4,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.11
   },
   "157": {
    "bpm": 127.7,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.45
   },
   "158": {
    "bpm": 93.8,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.555
   },
   "159": {
    "bpm": 139.5,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.005
   },
   "160": {
    "bpm": 120,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.305
   },
   "161": {
    "bpm": 71.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.23
   },
   "162": {
    "bpm": 120,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.07
   },
   "163": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.455
   },
   "164": {
    "bpm": 96.8,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.455
   },
   "165": {
    "bpm": 176.5,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.19
   },
   "166": {
    "bpm": 87,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.12
   },
   "167": {
    "bpm": 78.9,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.385
   },
   "168": {
    "bpm": 100,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0
   },
   "169": {
    "bpm": 93.8,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.25
   },
   "170": {
    "bpm": 95.2,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.095
   },
   "171": {
    "bpm": 142.9,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.165
   },
   "172": {
    "bpm": 75.9,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.215
   },
   "173": {
    "bpm": 87,
-   "key": "C"
+   "key": "C",
+   "beat": 0.21
   },
   "174": {
    "bpm": 176.5,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.13
   },
   "175": {
    "bpm": 176.5,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.015
   },
   "176": {
    "bpm": 115.4,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.14
   },
   "177": {
    "bpm": 72.3,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.39
   },
   "178": {
    "bpm": 127.7,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.43
   },
   "179": {
    "bpm": 103.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.195
   },
   "180": {
    "bpm": 133.3,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.345
   },
   "181": {
    "bpm": 100,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.575
   },
   "182": {
    "bpm": 103.4,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.215
   },
   "183": {
    "bpm": 133.3,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.105
   },
   "184": {
    "bpm": 125,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.11
   },
   "185": {
    "bpm": 125,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.31
   },
   "186": {
    "bpm": 101.7,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.14
   },
   "187": {
    "bpm": 89.6,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.17
   },
   "188": {
    "bpm": 100,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.525
   },
   "189": {
    "bpm": 125,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.245
   },
   "190": {
    "bpm": 95.2,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.135
   },
   "191": {
    "bpm": 127.7,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.43
   },
   "192": {
    "bpm": 93.8,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.065
   },
   "193": {
    "bpm": 139.5,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.065
   },
   "194": {
    "bpm": 146.3,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.13
   },
   "195": {
    "bpm": 130.4,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.065
   },
   "196": {
    "bpm": 100,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.08
   },
   "197": {
    "bpm": 130.4,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.23
   },
   "198": {
    "bpm": 92.3,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.115
   },
   "199": {
    "bpm": 93.8,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.095
   },
   "200": {
    "bpm": 90.9,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.175
   },
   "201": {
    "bpm": 129,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.13
   },
   "202": {
    "bpm": 125,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0
   },
   "203": {
    "bpm": 103.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.09
   },
   "204": {
    "bpm": 88.2,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.115
   },
   "205": {
    "bpm": 162.2,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.285
   },
   "206": {
    "bpm": 109.1,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.49
   },
   "207": {
    "bpm": 93.8,
-   "key": "D#m"
+   "key": "D#m",
+   "beat": 0.425
   },
   "208": {
    "bpm": 96.8,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.2
   },
   "209": {
    "bpm": 83.3,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.63
   },
   "210": {
    "bpm": 117.6,
-   "key": "F"
+   "key": "F",
+   "beat": 0.44
   },
   "211": {
    "bpm": 100,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.595
   },
   "212": {
    "bpm": 134.8,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.345
   },
   "213": {
    "bpm": 100,
-   "key": "C"
+   "key": "C",
+   "beat": 0,
+   "bad": "too short (2 seconds)"
   },
   "214": {
    "bpm": 78.9,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.17
   },
   "215": {
    "bpm": 98.4,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.14
   },
   "216": {
    "bpm": 130.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.39
   },
   "217": {
    "bpm": 101.7,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.245
   },
   "218": {
    "bpm": 92.3,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.575
   },
   "219": {
    "bpm": 105.3,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.5
   },
   "220": {
    "bpm": 117.6,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.24
   },
   "221": {
    "bpm": 122.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.11
   },
   "222": {
    "bpm": 100,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.37
   },
   "223": {
    "bpm": 100,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.205
   },
   "224": {
    "bpm": 142.9,
-   "key": "G#"
+   "key": "G#",
+   "beat": 0.41
   },
   "225": {
    "bpm": 98.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.13
   },
   "226": {
    "bpm": 96.8,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.255
   },
   "227": {
    "bpm": 100,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.37
   },
   "228": {
    "bpm": 100,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.205
   },
   "233": {
    "bpm": 122.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.33
   },
   "234": {
    "bpm": 139.5,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.42
   },
   "e8b109d7-ee60-4e09-a475-d10aea9d282f": {
    "bpm": 103.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.505
   },
   "43aba116-0966-44fd-a92b-a1505ab29df4": {
    "bpm": 100,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.195
   },
   "0fd1bb0d-46dc-4cfb-ad47-b0138c8a0788": {
    "bpm": 103.4,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.565
   },
   "d2ee1080-9415-4c92-bdde-fb21805ca73b": {
    "bpm": 162.2,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.155
   },
   "883d5a2b-f114-4151-bc00-497cd11cf874": {
    "bpm": 113.2,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.265
   },
   "db1913c7-fa7b-491a-b1b0-ae1a43a9da7f": {
    "bpm": 100,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.44
   },
   "cf006cab-85af-4340-892c-0c9b70a3f5ab": {
    "bpm": 176.5,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.32
   },
   "fea10383-dc46-4791-aa2a-279d5a77cd74": {
    "bpm": 93.8,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.44
   },
   "c4544556-df10-42dc-8a74-a36c2607c3db": {
    "bpm": 96.8,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.2
   },
   "e297aa6f-0b4e-468b-82ef-bba296315033": {
    "bpm": 166.7,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.33
   },
   "ba7e918a-4aaa-4146-b1e8-80138af6afa4": {
    "bpm": 96.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.245
   },
   "86b9dd96-4809-4f8b-9ec4-acacab1e99bc": {
    "bpm": 105.3,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.25
   },
   "8b61a4da-0173-4804-8e75-b15b1b1bd021": {
    "bpm": 107.1,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.19
   },
   "be2dc702-bc37-47ac-aa3f-1ef00c27c34a": {
    "bpm": 100,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.275
   },
   "76594a44-c539-4222-86e4-faefc431a3af": {
    "bpm": 120,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.01
   },
   "58927a0c-7522-4b21-9eee-8338ff0f1a3b": {
    "bpm": 113.2,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.195
   },
   "cee519b1-9f36-4f63-ab83-a19521c37b45": {
    "bpm": 100,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.395
   },
   "20709897-fef4-4d1f-b56f-c9025ac47baf": {
    "bpm": 96.8,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.54
   },
   "d8cfe29e-a00b-43be-b182-de367d14b04e": {
    "bpm": 92.3,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.285
   },
   "69265399-8339-4b47-97de-2d1acc08a2d9": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.245
   },
   "94e4377c-bb84-4bea-8b3f-324e1aded3e5": {
    "bpm": 93.8,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.455
   },
   "f03a8e02-d3c9-490f-b316-d9102d02711e": {
    "bpm": 98.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.06
   },
   "62f17d23-c56b-46e7-bb58-ee74c6df8592": {
    "bpm": 125,
-   "key": "D#"
+   "key": "D#",
+   "beat": 0.105
   },
   "a4bbc91d-16c7-47ec-b639-717391badea1": {
    "bpm": 125,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.125
   },
   "4c250b4d-ecb1-4083-88c3-aef48737ce22": {
    "bpm": 122.4,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.05
   },
   "f10183ed-eed1-42e7-a864-00fb74333e2b": {
    "bpm": 126.3,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.45
   },
   "82b10b44-e365-4fcb-9a6a-d61b35b0d4c4": {
    "bpm": 90.9,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.245
   },
   "658632c8-0e64-4891-9275-cd257b42b8f1": {
    "bpm": 171.4,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0
   },
   "2dcbfa27-2a0c-43b3-8794-28e9728f5d2f": {
    "bpm": 125,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.435
   },
   "dde612ee-e359-47af-89ea-f2efa41ca884": {
    "bpm": 100,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.025
   },
   "dcc3cb2a-1d80-4824-94d0-33aff6e48c02": {
    "bpm": 176.5,
-   "key": "G#m"
+   "key": "G#m",
+   "beat": 0.1
   },
   "f8e1454d-38ff-4484-bd93-99d074b91649": {
    "bpm": 125,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.095
   },
   "06b0aa8d-d7c5-488a-ad04-0297e1732231": {
    "bpm": 127.7,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.055
   },
   "5764fc65-cc53-416e-b426-98ee865a2461": {
    "bpm": 93.8,
-   "key": "Gm"
+   "key": "Gm",
+   "beat": 0.135
   },
   "62f2b1e1-62af-4d48-8740-7b6d1881a0ca": {
    "bpm": 74.1,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.805
   },
   "b6ad6b30-50df-4095-8c14-bb801cd31dc7": {
    "bpm": 113.2,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.465
   },
   "bdbed847-c45f-4504-a968-95104b6a76e5": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.525
   },
   "1b0446c0-dfa6-4f00-b549-a04ec517e929": {
    "bpm": 130.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.15
   },
   "af618e47-964d-47f7-994e-05cf8132f351": {
    "bpm": 125,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.395
   },
   "91d8e00e-3944-4dbe-9386-bf9290ffba92": {
    "bpm": 100,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.475
   },
   "a3571415-0b58-407f-b940-f265fe83e627": {
    "bpm": 100,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.49
   },
   "85a49ea9-5959-4501-ac2f-4a57fdaef61e": {
    "bpm": 126.3,
-   "key": "G#"
+   "key": "G#",
+   "beat": 0.225
   },
   "b4151ccb-f873-4e4c-bad4-48bdf596640e": {
    "bpm": 139.5,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.045
   },
   "8b4c1f5f-d4d8-4729-aee0-41ea68def1b9": {
    "bpm": 117.6,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.315
   },
   "da03aa56-09b5-479f-bd4c-2a188ad835a0": {
    "bpm": 105.3,
-   "key": "Am"
+   "key": "Am",
+   "beat": 0.145
   },
   "d83c7311-9d0a-4c72-9168-a6a4fb7a8cb7": {
    "bpm": 122.4,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.29
   },
   "fcc61c89-f7b6-4f08-a60f-57b6bd6e8bf6": {
    "bpm": 122.4,
-   "key": "Em"
+   "key": "Em",
+   "beat": 0.075
   },
   "0afdbb2b-3e47-49f0-8bb1-c018b5ce0236": {
    "bpm": 76.9,
-   "key": "G"
+   "key": "G",
+   "beat": 0.28
   },
   "373896fd-ae01-4f9a-a4f7-b11afe76826c": {
    "bpm": 71.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.485
   },
   "ec778688-9c66-4310-a13b-2857a5dccf5f": {
    "bpm": 123.7,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.075
   },
   "8350327a-b935-43f7-9406-9c07883c5210": {
    "bpm": 122.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.185
   },
   "a1eca418-d206-46ec-a2a6-c08a2e3ad5af": {
    "bpm": 90.9,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.615
   },
   "6e13c96d-9f4c-46a3-8e47-bcf44f3508ba": {
    "bpm": 83.3,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.31
   },
   "e3e560ed-b448-49b3-9be1-d55a70844b2e": {
    "bpm": 123.7,
-   "key": "C"
+   "key": "C",
+   "beat": 0.165
   },
   "128c9557-b00d-4c1f-802e-124dc8e169a0": {
    "bpm": 125,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.435
   },
   "1105612e-069f-43ad-9303-db71f987a835": {
    "bpm": 101.7,
-   "key": "Dm"
+   "key": "Dm",
+   "beat": 0.47
   },
   "5089c2e7-2200-4e36-82d2-445309708fe6": {
    "bpm": 139.5,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.105
   },
   "1f661d56-63eb-4a88-9667-b77c0b4a8a5c": {
    "bpm": 101.7,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.025
   },
   "2f6820d9-0e5c-434e-989e-8a82d7ce6a1a": {
    "bpm": 130.4,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.255
   },
   "d5356404-b9fc-40ca-b8e4-bcdb611538c4": {
    "bpm": 125,
-   "key": "A#m"
+   "key": "A#m",
+   "beat": 0.005
   },
   "24772e3e-83ff-4dd6-b5ab-8d71beccf285": {
    "bpm": 101.7,
-   "key": "C#m"
+   "key": "C#m",
+   "beat": 0.495
   },
   "4086e8ad-deb8-4efc-9af4-6f7d7b6dadb5": {
    "bpm": 153.8,
-   "key": "Bm"
+   "key": "Bm",
+   "beat": 0.255
   },
   "912aa401-8782-41e5-8499-632e908d4872": {
    "bpm": 115.4,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.11
   },
   "dfa05a8c-1d61-4b32-a67b-4082fa6457ed": {
    "bpm": 126.3,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.38
   },
   "5683bab3-f23c-4848-b6fd-f7fbb61e314c": {
    "bpm": 90.9,
-   "key": "F#m"
+   "key": "F#m",
+   "beat": 0.035
   },
   "de8a21bb-95c7-458a-b36c-acda800d7803": {
    "bpm": 90.9,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.265
   },
   "9204816a-c856-495c-9608-bbb5d45ea11a": {
    "bpm": 93.8,
-   "key": "Cm"
+   "key": "Cm",
+   "beat": 0.495
   },
   "00194b07-2822-4aa2-a1d2-5560b2167d45": {
    "bpm": 127.7,
-   "key": "Fm"
+   "key": "Fm",
+   "beat": 0.45
   },
   "95a80cb8-26bd-4ca3-b91a-d9abe96ab971": {
    "bpm": 127.7,
-   "key": "G#"
+   "key": "G#",
+   "beat": 0.01
+  },
+  "local:7roo7hbasedsingles01evesdaughterwav": {
+   "bpm": 101.7,
+   "key": "Gm",
+   "beat": 0.14
+  },
+  "local:7roo7hbasedsingles03mewav": {
+   "bpm": 133.3,
+   "key": "Bm",
+   "beat": 0.23
+  },
+  "local:7roo7hbasedsingles07evesdaughteraltmixwav": {
+   "bpm": 101.7,
+   "key": "Gm",
+   "beat": 0.14
+  },
+  "local:berlberlnkosiyamimp3": {
+   "bpm": 89.6,
+   "key": "F#m",
+   "beat": 0.485
+  },
+  "local:gesd1gesd1gesd1prodbyimanafrikahtaggedmp3": {
+   "bpm": 100,
+   "key": "C#m",
+   "beat": 0.22
+  },
+  "local:imanafrikahhighbred011010mp3": {
+   "bpm": 166.7,
+   "key": "C#m",
+   "beat": 0.08
+  },
+  "local:imanafrikahhighbred02buildabetterworldmp3": {
+   "bpm": 103.4,
+   "key": "Cm",
+   "beat": 0.14
+  },
+  "local:imanafrikahhighbred03camealongwaymp3": {
+   "bpm": 103.4,
+   "key": "Gm",
+   "beat": 0.27
+  },
+  "local:imanafrikahhighbred04finallytheyputmeonmp3": {
+   "bpm": 95.2,
+   "key": "Cm",
+   "beat": 0.485
+  },
+  "local:imanafrikahhighbred05iyapeoplesongmp3": {
+   "bpm": 107.1,
+   "key": "C#m",
+   "beat": 0.115
+  },
+  "local:imanafrikahhighbred06latelyalotmp3": {
+   "bpm": 96.8,
+   "key": "D#",
+   "beat": 0.255
+  },
+  "local:imanafrikahhighbred07thebigmancallmp3": {
+   "bpm": 78.9,
+   "key": "Dm",
+   "beat": 0.155
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahkeyswav": {
+   "bpm": 131.9,
+   "key": "F#m",
+   "beat": 0.185
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahforwardwav": {
+   "bpm": 133.3,
+   "key": "Dm",
+   "beat": 0.13
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahlearnfilivewav": {
+   "bpm": 98.4,
+   "key": "G#",
+   "beat": 0.045
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahmichildrenwatchwav": {
+   "bpm": 133.3,
+   "key": "G#m",
+   "beat": 0.085
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahyoungestlionwav": {
+   "bpm": 100,
+   "key": "G#m",
+   "beat": 0.295
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahustodaywav": {
+   "bpm": 100,
+   "key": "Dm",
+   "beat": 0.075
+  },
+  "local:imanafrikahimanafrikahtopicsimanafrikahftempressmakedabiggerwav": {
+   "bpm": 96.8,
+   "key": "D#m",
+   "beat": 0.485
+  },
+  "local:imanafrikahloversep02likkumissmp3": {
+   "bpm": 127.7,
+   "key": "F#m",
+   "beat": 0.43
+  },
+  "local:imanafrikahvol205spacewav": {
+   "bpm": 125,
+   "key": "G#m",
+   "beat": 0.235
+  },
+  "local:imanafrikahnewsinglesimanafrikahpopmp3": {
+   "bpm": 96.8,
+   "key": "C#m",
+   "beat": 0.205
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftclushaihatemarijuanawav": {
+   "bpm": 96.8,
+   "key": "A#m",
+   "beat": 0.265
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftfkiconikreverbonitmiballarinamp3": {
+   "bpm": 92.3,
+   "key": "Gm",
+   "beat": 0.615
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftgigablackdoyovyononekamp3": {
+   "bpm": 111.1,
+   "key": "Gm",
+   "beat": 0.005
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftgigablackdoyozingilamp3": {
+   "bpm": 115.4,
+   "key": "C#m",
+   "beat": 0.025
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftkillanzimuonanizikowav": {
+   "bpm": 115.4,
+   "key": "G",
+   "beat": 0.305
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftmsjorjibiggestbumwav": {
+   "bpm": 100,
+   "key": "Am",
+   "beat": 0.055
+  },
+  "local:imanafrikahworldmusicfotuimanafrikahftkillanzimutamangamp3": {
+   "bpm": 87,
+   "key": "A#m",
+   "beat": 0.355
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahokaymp3": {
+   "bpm": 93.8,
+   "key": "Cm",
+   "beat": 0.325
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahsekamp3": {
+   "bpm": 96.8,
+   "key": "Gm",
+   "beat": 0.125
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftalkanihottubmp3": {
+   "bpm": 83.3,
+   "key": "Fm",
+   "beat": 0.05
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftanniemaynalemamp3": {
+   "bpm": 96.8,
+   "key": "Em",
+   "beat": 0.26
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamily10101tosljmojobodiedm": {
+   "bpm": 88.2,
+   "key": "A#m",
+   "beat": 0.45
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamilyraskinkyafrikahunitem": {
+   "bpm": 100,
+   "key": "Dm",
+   "beat": 0.54
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamilyblessupmp3": {
+   "bpm": 93.8,
+   "key": "E",
+   "beat": 0.225
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamily10toesmp3": {
+   "bpm": 125,
+   "key": "Fm",
+   "beat": 0.02
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamilyinarticulatemomentmp3": {
+   "bpm": 121.2,
+   "key": "Dm",
+   "beat": 0.29
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftcherryfreshfamilyjorzizmraskinkychedda": {
+   "bpm": 96.8,
+   "key": "A#m",
+   "beat": 0.055
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftriskyraskinkykunkeyanithajedilosemywor": {
+   "bpm": 113.2,
+   "key": "Em",
+   "beat": 0.115
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahbigmangomp3": {
+   "bpm": 96.8,
+   "key": "D#m",
+   "beat": 0.085
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftt3rnnnecstacywav": {
+   "bpm": 176.5,
+   "key": "Em",
+   "beat": 0.285
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahkoswemp3": {
+   "bpm": 98.4,
+   "key": "Em",
+   "beat": 0.565
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahftscottzmshewanahangmp3": {
+   "bpm": 92.3,
+   "key": "Dm",
+   "beat": 0.07
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahft7roo7idecidemp3": {
+   "bpm": 117.6,
+   "key": "G#m",
+   "beat": 0.075
+  },
+  "local:imanafrikahworldmusicvillagekidftaiich2imanafrikahftaiich2villagekidpart2mp3": {
+   "bpm": 137.9,
+   "key": "Dm",
+   "beat": 0.115
+  },
+  "local:imanafrikahworldmusicfotuvol2imanafrikahfttyceziggykennethkaundatributewav": {
+   "bpm": 122.4,
+   "key": "Dm",
+   "beat": 0.07
+  },
+  "local:n3m3sissingle01shadowmp3": {
+   "bpm": 120,
+   "key": "Dm",
+   "beat": 0.33
+  },
+  "local:imanafrikahworldmusicvillagekidftaiich2imanafrikahftaiich2villagekidmp3": {
+   "bpm": 80,
+   "key": "Bm",
+   "beat": 0.605
+  },
+  "local:n3m3sissingle05butt3erfli3spt2mp3": {
+   "bpm": 126.3,
+   "key": "Cm",
+   "beat": 0.38
+  },
+  "local:thezaoeastvol2mp3": {
+   "bpm": 153.8,
+   "key": "Fm",
+   "beat": 0.35
+  },
+  "local:thezaoeastvol1mp3": {
+   "bpm": 100,
+   "key": "Fm",
+   "beat": 0.255
+  },
+  "local:thezaoeastvol3mp3": {
+   "bpm": 101.7,
+   "key": "Fm",
+   "beat": 0.04
+  },
+  "local:thezaomideastvol1mp3": {
+   "bpm": 100,
+   "key": "Dm",
+   "beat": 0.565
+  },
+  "local:thezaonortheastvol1mp3": {
+   "bpm": 101.7,
+   "key": "Fm",
+   "beat": 0.05
+  },
+  "local:thezaonortheastvol2mp3": {
+   "bpm": 100,
+   "key": "Dm",
+   "beat": 0.125
+  },
+  "local:thezaonortheastvol3mp3": {
+   "bpm": 101.7,
+   "key": "Am",
+   "beat": 0.015
+  },
+  "local:thezaonorthvol1mp3": {
+   "bpm": 101.7,
+   "key": "Cm",
+   "beat": 0.27
+  },
+  "local:thezaosinglesimanafrikahecosystemmp3": {
+   "bpm": 105.3,
+   "key": "A#m",
+   "beat": 0.47
+  },
+  "local:thezaosinglesimanafrikahzaomp3": {
+   "bpm": 89.6,
+   "key": "A#m",
+   "beat": 0.485
+  },
+  "local:thezaosinglesimanafrikahzaostockmp3": {
+   "bpm": 101.7,
+   "key": "D#m",
+   "beat": 0.56
+  },
+  "local:thezaosoutheastvol1mp3": {
+   "bpm": 107.1,
+   "key": "Am",
+   "beat": 0.385
+  },
+  "local:zizoxzizoxdonesongszizoxcelebrateprodbyimanafrikahmp3": {
+   "bpm": 96.8,
+   "key": "F#m",
+   "beat": 0.055
+  },
+  "local:zizoxzizoxdonesongszizoxevilmanprodbyimanafrikahmp3": {
+   "bpm": 81.1,
+   "key": "F#m",
+   "beat": 0.045
+  },
+  "local:zizoxzizoxdonesongszizoxhabitsprodbyimanafrikahmp3": {
+   "bpm": 96.8,
+   "key": "G#m",
+   "beat": 0.3
+  },
+  "local:zizoxzizoxdonesongszizoxicareprodbyimanafrikahmp3": {
+   "bpm": 93.8,
+   "key": "Cm",
+   "beat": 0.14
+  },
+  "local:zizoxzizoxdonesongszizoxminuhprodbyimanafrikahmp3": {
+   "bpm": 113.2,
+   "key": "F#m",
+   "beat": 0.005
+  },
+  "local:zizoxzizoxdonesongszizoxmoneymakeherdanceprodbyimanafrikahmp3": {
+   "bpm": 100,
+   "key": "C#m",
+   "beat": 0.215
   }
  }
 }

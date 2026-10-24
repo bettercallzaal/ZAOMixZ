@@ -1013,3 +1013,26 @@ body:not(.pro-mode) .top-bar .switch-mini { display: flex; }
 .switch-mini-btn.hit { color: #05060a; background: var(--mz-a); border-color: var(--mz-a); }
 .switch-mini-btn.miss { border-color: #ff5a5a; color: #ff5a5a; }
 @media (max-width: 900px) { body:not(.pro-mode) .top-bar .switch-mini { display: none; } }
+
+/* DJ MixZ workflows: recipe chips and the builder */
+.djmixz-wf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.djmixz-wf-chip { position: relative; padding-right: 44px; }
+.djmixz-wf-edit { position: absolute; right: 8px; top: 8px; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mz-muted); border: 1px solid var(--mz-line); border-radius: 6px; padding: 2px 6px; }
+.djmixz-wf-edit:hover { color: var(--mz-text); border-color: var(--mz-line-hi); }
+.djmixz-wf-hint { font-size: 0.76rem; color: var(--mz-muted); }
+.djmixz-wf-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.djmixz-wf-builder { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 10px; background: var(--mz-inset); border: 1px solid var(--mz-line-hi); }
+.djmixz-wf-builder.hidden { display: none; }
+.djmixz-wf-head { display: flex; gap: 8px; }
+.djmixz-wf-name { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--mz-line-hi); background: var(--mz-panel); color: var(--mz-text); font-weight: 700; }
+.djmixz-wf-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: step; }
+.djmixz-wf-step { counter-increment: step; padding: 8px; border-radius: 8px; border: 1px solid var(--mz-line); background: var(--mz-panel); display: flex; flex-direction: column; gap: 6px; }
+.djmixz-wf-step::before { content: 'step ' counter(step); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mz-muted); }
+.djmixz-wf-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.djmixz-wf-row label { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--mz-muted); }
+.djmixz-wf-row label[hidden] { display: none; }
+.djmixz-wf-row .djmixz-select { width: auto; min-width: 110px; height: 32px; }
+.djmixz-wf-num { width: 56px; height: 32px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--mz-line-hi); background: var(--mz-inset); color: var(--mz-text); }
+.djmixz-wf-check { user-select: none; }
+.djmixz-wf-save { flex: none; height: 36px; padding: 0 14px; }
+.djmixz-wf-tag { font-style: normal; font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; color: #ffd27a; border: 1px solid rgba(255, 210, 122, 0.4); border-radius: 5px; padding: 1px 5px; margin-right: 4px; }

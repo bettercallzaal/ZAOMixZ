@@ -202,6 +202,7 @@ export class Deck {
                     artist: meta.artist || '',
                     bpm: meta.bpm || null,
                     key: meta.key || null,
+                    beat: meta.beat ?? null,
                     genre: meta.genre || null,
                     id: meta.id ?? null,
                     artwork: meta.artwork || null,

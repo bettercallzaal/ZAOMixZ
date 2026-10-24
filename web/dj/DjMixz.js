@@ -12,6 +12,7 @@ import { keyRelation } from './SwitchPad.js';
 import { advise } from './FlowDirector.js';
 import { adviceData } from './StreamEvents.js';
 import { esc } from './Html.js';
+import { PRESETS, loadWorkflows, saveWorkflows, makeWorkflow, makeStep, buildSet, MOVES, RULES } from './Workflows.js';
 
 // Mood = the energy the room should feel, from the first track (x = 0) to the last (x = 1).
 export const MOODS = [
@@ -153,6 +154,7 @@ export function planPartyTransition(a, b, harmonic, prevTypes = []) {
 // (the 24-hour loop uses it). `opts.avoid` lists ids that must not open the set (the last songs
 // of the round before): they are kept out of the first half.
 const baseEnergy = energyOf;
+const RECENT_KEY = 'mixz-recent-openers';
 export function planSet(tracks, moodId, harmonic, opts = {}) {
     const mood = MOODS.find((m) => m.id === moodId) || MOODS[2];
     const seen = new Set();
@@ -323,7 +325,21 @@ export class DjMixz {
         this.mood = moodId;
         this._lastBuild = { sourceId, moodId, minutes };
         this.loop = minutes === 1440; // 24 hours: when the crate runs out it comes back around
-        this.plan = planSet(tracks, moodId, this.dj.harmonic, { maxTracks, shuffle: extra.round ? 1 : 0, avoid: extra.avoid });
+        // Recipes picked in the panel (Workflows.js) decide every move; none picked, the mood does.
+        const recipe = (this.recipe || []).map((id) => (this.workflows || []).find((w) => w.id === id)).filter(Boolean);
+        // Every set is a fresh deal (IMan, 23 Oct: same playlist, same first song is not creative),
+        // and the songs that opened the last set stay out of this one's opening.
+        let recent = [];
+        try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { /* no storage */ }
+        extra = { ...extra, round: true, avoid: [...(extra.avoid || []), ...recent] };
+        if (recipe.length) {
+            let pool = tracks.slice();
+            if (extra.round) for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+            const avoid = new Set(extra.avoid || []);
+            if (avoid.size) pool = [...pool.filter((t) => !avoid.has(String(t.id ?? t.sourceId))), ...pool.filter((t) => avoid.has(String(t.id ?? t.sourceId)))];
+            this.plan = buildSet(recipe, pool, maxTracks, this.dj.harmonic);
+        } else this.plan = planSet(tracks, moodId, this.dj.harmonic, { maxTracks, shuffle: extra.round ? 1 : 0, avoid: extra.avoid });
+        try { localStorage.setItem(RECENT_KEY, JSON.stringify(this.plan.slice(0, 10).map((x) => String(x.track?.id ?? x.track?.sourceId)))); } catch (e) { /* no storage */ }
         this._preloadFirst();
         this.index = 0;
         this._renderPlan();
@@ -348,24 +364,28 @@ export class DjMixz {
             const next = this.plan[this.index + 1];
             if (!next) { this._finish(); return; }
             this._applyMove(next.move);
+            // A recipe step says what plays as the move starts; otherwise the mood's own habits.
             // Party: the dub siren (or the DJ's own sweep) rides an echo out; a riser leads a
             // stem swap or a cut in. Other moods: a sweep on an echo out, now and then.
             if (!this._fxOn()) { /* music only: no sounds of its own */ }
+            else if (next.workflow) { if (next.move?.fxIn) this._fireFx(next.move.fxIn, 300); }
             else if (this.mood === 'party' && next.move?.type === 'echo-out') setTimeout(() => this.dj.partyFX?.siren(), 400);
             else if (this.mood === 'party' && (next.move?.type === 'stem-swap' || next.move?.type === 'cut') && Math.random() < 0.6) this.dj.partyFX?.sweep?.();
-            else if (this.mood !== 'party' && next.move?.type === 'echo-out' && Math.random() < 0.35) setTimeout(() => this.dj.partyFX?.sweep?.(), 400);
             this._orig.trigger();
         };
         flow.onTransitionComplete = (direction) => {
             this._orig.done(direction);
             this._songStart = Date.now(); this._rewound = false;
+            // A recipe step says what plays as the song lands; otherwise the mood's own habits.
             // Party: a hit as the tune lands, then the MC bigs it up, most of the time.
             // Other moods: a drop now and then, so the board gets used without wearing thin.
+            const landed = this.plan[this.index + 1];
             if (!this._fxOn()) { /* music only */ }
+            else if (landed?.workflow) { if (landed.move?.fxOut) this._fireFx(landed.move.fxOut, 500); }
             else if (this.mood === 'party') {
                 if (Math.random() < 0.5) this.dj.partyFX?.hit?.();
                 if (Math.random() < 0.65) setTimeout(() => this.dj.partyFX?.hype(), 900);
-            } else if (Math.random() < 0.2 && this.dj.soundBoard?.has('vocal')) setTimeout(() => this.dj.partyFX?.hype(), 1200);
+            } // Other moods: no FX of their own (IMan, 23 Oct: drive time and mornings want the music and the mix)
             this.index += 1;
             this._armNext();
             this._renderPlan();
@@ -795,6 +815,11 @@ export class DjMixz {
             <div id="djmixz-artist" class="djmixz-artists" hidden role="group" aria-label="SongChainn artists"></div>
             <div class="djmixz-label">Mood</div>
             <div class="djmixz-moods">${MOODS.map((m) => `<button class="djmixz-mood${m.id === this.mood ? ' active' : ''}" data-mood="${m.id}"><b>${m.label}</b><span>${m.hint}</span></button>`).join('')}</div>
+            <div class="djmixz-label">Workflows: recipes of moves</div>
+            <div class="djmixz-wf-hint" id="djmixz-wf-chain">No recipe picked: the mood decides every move.</div>
+            <div class="djmixz-wf" id="djmixz-wf" role="group" aria-label="Workflow recipes"></div>
+            <div class="djmixz-wf-tools"><button type="button" class="btn-mini" id="djmixz-wf-new">NEW RECIPE</button><button type="button" class="btn-mini" id="djmixz-wf-clear">CLEAR PICKS</button></div>
+            <div class="djmixz-wf-builder hidden" id="djmixz-wf-builder"></div>
             <label class="djmixz-label" for="djmixz-length">Session length</label>
             <select id="djmixz-length" class="toolbar-select djmixz-select"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="90">90 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option><option value="1440">24 hours: loops the crate, reshuffled every round</option><option value="0">Everything it has</option></select>
             <label class="djmixz-label" for="djmixz-b2b">Back to back with a live DJ</label>
@@ -820,10 +845,89 @@ export class DjMixz {
             else p.shout(fx);
         });
         panel.querySelector('#djmixz-close').addEventListener('click', () => panel.classList.add('hidden'));
-        panel.querySelectorAll('.djmixz-mood').forEach((b) => b.addEventListener('click', () => {
-            panel.querySelectorAll('.djmixz-mood').forEach((x) => x.classList.remove('active'));
+        panel.querySelectorAll('.djmixz-moods .djmixz-mood').forEach((b) => b.addEventListener('click', () => {
+            panel.querySelectorAll('.djmixz-moods .djmixz-mood').forEach((x) => x.classList.remove('active'));
             b.classList.add('active'); this.mood = b.dataset.mood;
         }));
+        // Workflows: recipes of moves and next-song rules (Workflows.js). Presets first, then the
+        // ones saved on this device. Tap chips in the order they should chain; none picked means
+        // the mood decides every move, as before. NEW RECIPE opens the builder.
+        this.workflows = [...PRESETS, ...loadWorkflows().filter((w) => !PRESETS.some((p) => p.id === w.id))];
+        this.recipe = [];
+        let draft = null;
+        const isPreset = (id) => PRESETS.some((p) => p.id === id);
+        const wfEl = panel.querySelector('#djmixz-wf'), builder = panel.querySelector('#djmixz-wf-builder');
+        const padOptions = () => [['', 'nothing'], ['horn', 'air horn'], ['vocal', 'a drop (MC)'], ['fx', 'an FX pad'], ...(this.dj.soundBoard?.pads || []).map((p) => [p.id, p.label.toLowerCase()])];
+        const renderWf = () => {
+            wfEl.innerHTML = this.workflows.map((w) => {
+                const at = this.recipe.indexOf(w.id);
+                const steps = w.steps.map((s) => s.move.replace('-', ' ')).join(', ');
+                return `<button type="button" class="djmixz-mood djmixz-wf-chip${at >= 0 ? ' active' : ''}" data-wf="${esc(w.id)}" aria-pressed="${at >= 0}"><b>${at >= 0 ? (at + 1) + '. ' : ''}${esc(w.name)}</b><span>${esc(w.hint || steps)}</span><span class="djmixz-wf-edit" data-edit="${esc(w.id)}">${isPreset(w.id) ? 'copy' : 'edit'}</span></button>`;
+            }).join('');
+            const chain = this.recipe.map((id) => this.workflows.find((w) => w.id === id)?.name).filter(Boolean);
+            panel.querySelector('#djmixz-wf-chain').textContent = chain.length ? 'Chained: ' + chain.join(' > ') + '. Repeats until the time is filled.' : 'No recipe picked: the mood decides every move.';
+        };
+        const sel = (name, i, options, value) => `<select data-step="${i}" data-field="${name}" class="toolbar-select djmixz-select">${options.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(value) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+        const renderBuilder = () => {
+            if (!draft) { builder.classList.add('hidden'); builder.innerHTML = ''; return; }
+            builder.classList.remove('hidden');
+            const pads = padOptions();
+            builder.innerHTML = `
+                <div class="djmixz-wf-head"><input type="text" id="djmixz-wf-name" class="djmixz-wf-name" placeholder="Name this recipe" value="${esc(draft.name)}" maxlength="40">
+                <select id="djmixz-wf-from" class="toolbar-select djmixz-select" aria-label="Start from a recipe"><option value="">start from…</option>${this.workflows.map((w) => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}</select></div>
+                <ol class="djmixz-wf-steps">${draft.steps.map((s, i) => `<li class="djmixz-wf-step">
+                    <div class="djmixz-wf-row"><label>move ${sel('move', i, MOVES.map((m) => [m.id, m.label.toLowerCase()]), s.move)}</label><label>bars <input type="number" min="1" max="64" value="${s.bars}" data-step="${i}" data-field="bars" class="djmixz-wf-num"></label><label>next song ${sel('rule', i, RULES.map((r) => [r.id, r.label.toLowerCase()]), s.rule)}</label><label${s.rule.startsWith('tempo') ? '' : ' hidden'}>by % <input type="number" min="1" max="24" value="${s.amount}" data-step="${i}" data-field="amount" class="djmixz-wf-num"></label></div>
+                    <div class="djmixz-wf-row"><label>as it starts ${sel('fxIn', i, pads, s.fxIn || '')}</label><label>as it lands ${sel('fxOut', i, pads, s.fxOut || '')}</label><label>horn ${sel('airhorn', i, [['', 'no'], ['classic', 'yes'], ['double', 'double']], s.airhorn || '')}</label><label class="djmixz-wf-check"><input type="checkbox" data-step="${i}" data-field="tempoRide"${s.tempoRide ? ' checked' : ''}> tempo ride</label><button type="button" class="btn-mini" data-del="${i}" aria-label="Remove step ${i + 1}">X</button></div>
+                </li>`).join('')}</ol>
+                <div class="djmixz-wf-tools"><button type="button" class="btn-mini" id="djmixz-wf-add">ADD STEP</button><button type="button" class="djmixz-btn djmixz-wf-save" id="djmixz-wf-save">SAVE RECIPE</button>${draft.id && !isPreset(draft.id) ? '<button type="button" class="btn-mini" id="djmixz-wf-delete">DELETE</button>' : ''}<button type="button" class="btn-mini" id="djmixz-wf-cancel">CANCEL</button></div>`;
+        };
+        const openDraft = (from) => {
+            draft = from ? { id: isPreset(from.id) ? null : from.id, name: isPreset(from.id) ? from.name + ' (mine)' : from.name, steps: from.steps.map((s) => ({ ...s })) } : { id: null, name: '', steps: [makeStep({})] };
+            renderBuilder();
+            builder.querySelector('#djmixz-wf-name')?.focus();
+        };
+        wfEl.addEventListener('click', (e) => {
+            const edit = e.target.closest('[data-edit]')?.dataset.edit;
+            if (edit) { openDraft(this.workflows.find((w) => w.id === edit)); e.stopPropagation(); return; }
+            const id = e.target.closest('[data-wf]')?.dataset.wf;
+            if (!id) return;
+            this.recipe = this.recipe.includes(id) ? this.recipe.filter((x) => x !== id) : [...this.recipe, id];
+            renderWf();
+        });
+        panel.querySelector('#djmixz-wf-new').addEventListener('click', () => openDraft(null));
+        panel.querySelector('#djmixz-wf-clear').addEventListener('click', () => { this.recipe = []; renderWf(); });
+        builder.addEventListener('input', (e) => {
+            const el = e.target, i = Number(el.dataset.step), f = el.dataset.field;
+            if (el.id === 'djmixz-wf-name') { draft.name = el.value; return; }
+            if (!f || !draft?.steps[i]) return;
+            draft.steps[i][f] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value;
+            if (f === 'rule') renderBuilder();
+        });
+        builder.addEventListener('change', (e) => {
+            if (e.target.id !== 'djmixz-wf-from') return;
+            const from = this.workflows.find((w) => w.id === e.target.value);
+            if (from) { draft.steps = from.steps.map((s) => ({ ...s })); if (!draft.name.trim()) draft.name = from.name + ' (mine)'; renderBuilder(); }
+        });
+        builder.addEventListener('click', (e) => {
+            const del = e.target.closest('[data-del]')?.dataset.del;
+            if (del !== undefined) { draft.steps.splice(Number(del), 1); if (!draft.steps.length) draft.steps.push(makeStep({})); renderBuilder(); return; }
+            const id = e.target.closest('button')?.id;
+            if (id === 'djmixz-wf-add') { draft.steps.push(makeStep({})); renderBuilder(); }
+            else if (id === 'djmixz-wf-cancel') { draft = null; renderBuilder(); }
+            else if (id === 'djmixz-wf-delete') { this.workflows = this.workflows.filter((w) => w.id !== draft.id); this.recipe = this.recipe.filter((x) => x !== draft.id); saveWorkflows(this.workflows.filter((w) => !isPreset(w.id))); draft = null; renderWf(); renderBuilder(); this._say('Recipe deleted.'); }
+            else if (id === 'djmixz-wf-save') {
+                if (!draft.name.trim()) { this._say('Give the recipe a name first.'); builder.querySelector('#djmixz-wf-name')?.focus(); return; }
+                let w = makeWorkflow(draft.name, draft.steps, { id: draft.id });
+                if (isPreset(w.id) || (!draft.id && this.workflows.some((x) => x.id === w.id))) w = makeWorkflow(draft.name, draft.steps, { id: w.id + '-' + Date.now().toString(36).slice(-4) });
+                this.workflows = draft.id ? this.workflows.map((x) => (x.id === w.id ? w : x)) : [...this.workflows, w];
+                saveWorkflows(this.workflows.filter((x) => !isPreset(x.id)));
+                if (!this.recipe.includes(w.id)) this.recipe = [...this.recipe, w.id];
+                draft = null; renderWf(); renderBuilder();
+                this._say(`Recipe "${w.name}" saved and picked: ${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'}. Build the set to hear it.`);
+            }
+        });
+        renderWf();
+
         const artistSel = panel.querySelector('#djmixz-artist');
         // Tap as many artist chips as you like. ALL and CLEAR in the header pick or drop everyone.
         // Picked artists sit on top as chips with an x; a search box narrows the long list.
@@ -895,7 +999,8 @@ export class DjMixz {
         panel.querySelector('#djmixz-build').addEventListener('click', () => {
             const plan = this.build(panel.querySelector('#djmixz-source').value, this.mood, Number(panel.querySelector('#djmixz-length').value));
             panel.querySelector('#djmixz-start').disabled = plan.length < 2;
-            this._say(plan.length < 2 ? 'That playlist has fewer than two playable tracks. Open a fuller tab in the library and build again.' : `Set built: ${plan.length} tracks. Read it through, then press START.`);
+            const recipes = (this.recipe || []).length;
+            this._say(plan.length < 2 ? 'That playlist has fewer than two playable tracks. Open a fuller tab in the library and build again.' : recipes ? `Set built from ${recipes} ${recipes === 1 ? 'recipe' : 'recipes'}: ${plan.length} tracks. Read it through, then press START.` : `Set built: ${plan.length} tracks. Read it through, then press START.`);
         });
         const readB2b = (v) => { this.battle = String(v).startsWith('b'); this.b2b = Number(String(v).replace('b', '')) || 0; };
         panel.querySelector('#djmixz-b2b').addEventListener('change', (e) => { readB2b(e.target.value); this._renderBar(); });
@@ -907,6 +1012,18 @@ export class DjMixz {
     // a local board (board.local.json). Zaal's and the public app play music only (Zaal, 22 Oct).
     _fxOn() { return !!this.dj.soundBoard?.local; }
 
+    // One sound from the FX board for a recipe step: a pad id, or a group (horn, vocal, fx).
+    _fireFx(what, delay = 0) {
+        const board = this.dj.soundBoard;
+        if (!board || !what) return;
+        setTimeout(() => {
+            try {
+                if (board.pads.some((p) => p.id === what)) board.play(what, { echo: /^neily|vocal/.test(what) });
+                else board.fire(what, { echo: what === 'vocal' });
+            } catch (e) { /* no FX, the mix goes on */ }
+        }, delay);
+    }
+
     _say(text) { const el = typeof document !== 'undefined' && document.getElementById('djmixz-say'); if (el) el.textContent = text; }
 
     _renderPlan() {
@@ -915,7 +1032,8 @@ export class DjMixz {
         const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         el.innerHTML = this.plan.map((p, i) => {
             const state = this.running && i === this.index ? ' now' : this.running && i < this.index ? ' done' : '';
-            const move = p.move ? `<div class="djmixz-move"><b>${p.move.type.replace('-', ' ')}</b>, ${p.move.bars} ${p.move.bars === 1 ? 'bar' : 'bars'}. ${esc(p.move.why)}.</div>` : '<div class="djmixz-move"><b>opens the set</b></div>';
+            const tag = p.workflow ? `<i class="djmixz-wf-tag">${esc((this.workflows || []).find((w) => w.id === p.workflow)?.name || p.workflow)}</i> ` : '';
+            const move = p.move ? `<div class="djmixz-move">${tag}<b>${p.move.type.replace('-', ' ')}</b>, ${p.move.bars} ${p.move.bars === 1 ? 'bar' : 'bars'}. ${esc(p.move.why)}.</div>` : '<div class="djmixz-move"><b>opens the set</b></div>';
             return `<li class="djmixz-row${state}">${move}<div class="djmixz-track"><span class="djmixz-energy" style="--e:${Math.round(p.energy * 100)}%"></span><span class="djmixz-name">${esc(p.track.title)}</span><span class="djmixz-meta">${esc(p.track.artist)}${p.track.bpm ? ' · ' + Math.round(p.track.bpm) + ' BPM' : ''}</span></div></li>`;
         }).join('');
     }

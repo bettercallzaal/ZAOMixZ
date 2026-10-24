@@ -1,5 +1,5 @@
 // AutoTransition.js — Automated crossfade transitions between decks
-// Supports multiple transition types: blend, echo-out, cut, filter-sweep, stem-swap
+// Supports multiple transition types: blend, echo-out, cut, filter-sweep, stem-swap, mashup
 // Uses equal-power (cos/sin) crossfade curve for smooth audio transitions
 // Includes gradual BPM matching during transitions
 // Driven by Clock.every, not requestAnimationFrame: a hidden tab stops animation frames, and a
@@ -116,7 +116,8 @@ export class AutoTransition {
 
         // Store original target deck rate for BPM sync restoration
         const targetDeck = this.direction === 'AtoB' ? this.decks.B : this.decks.A;
-        this._originalTargetRate = targetDeck.currentRate;
+        // A mashup locked the tempo before the start: home is the rate the deck had before that
+        this._originalTargetRate = this._mash ? this._mash.before : targetDeck.currentRate;
 
         // Initialize transition-type-specific effects
         this._initTransitionEffects();
@@ -158,12 +159,16 @@ export class AutoTransition {
                 // No init needed — instantaneous switch
                 break;
 
+            case 'mashup':
             case 'stem-swap':
                 // EQ stems: the old song keeps its vocal (mids and highs) while its drums and bass
                 // go; the new song comes in as drums and bass only, then its vocal takes over.
                 this._stemBefore = {};
                 for (const id of [sourceDeckId, targetDeckId]) this._stemBefore[id] = { low: this._bandEQ(id, 'low'), mid: this._bandEQ(id, 'mid'), high: this._bandEQ(id, 'high') };
                 this.router.setEQ(targetDeckId, 'mid', -26);
+                // The mashup holds back the new song's highs too, so only its drums and bass come in
+                // under the old vocal: no second voice on top (IMan, 23 Oct).
+                if (this.transitionType === 'mashup') this.router.setEQ(targetDeckId, 'high', -24);
                 break;
 
             case 'blend':
@@ -199,6 +204,9 @@ export class AutoTransition {
                 break;
             case 'stem-swap':
                 this._animateStemSwap(progress);
+                break;
+            case 'mashup':
+                this._animateMashup(progress);
                 break;
             default:
                 this._animateBlend(progress);
@@ -421,6 +429,71 @@ export class AutoTransition {
         this.router.channels[targetDeckId].crossfadeGain.gain.value = targetGain;
     }
 
+    // Mashup (Dj Afrikah): the new beat comes in under the old song, the old drums and bass go,
+    // and the old vocal rides the new beat for most of the move. Then the vocals trade and the
+    // old song leaves.  0-8%: new beat up (its vocal held back). 8-16%: old drums and bass out.
+    // 16-84%: the ride. 84-92%: vocals trade. 92-100%: the old song goes.
+    _animateMashup(progress) {
+        const src = this.direction === 'AtoB' ? 'A' : 'B';
+        const dst = this.direction === 'AtoB' ? 'B' : 'A';
+        const before = this._stemBefore || {};
+        const lerp = (a, b, x) => a + (b - a) * Math.max(0, Math.min(1, x));
+        const kill = (progress - 0.08) / 0.08;
+        this.router.setEQ(src, 'low', lerp(before[src]?.low ?? 0, -30, kill));
+        this.router.setEQ(src, 'high', lerp(before[src]?.high ?? 0, -14, kill));
+        const trade = (progress - 0.84) / 0.08;
+        this.router.setEQ(src, 'mid', lerp(before[src]?.mid ?? 0, -30, trade));
+        this.router.setEQ(dst, 'mid', lerp(-26, before[dst]?.mid ?? 0, trade));
+        this.router.setEQ(dst, 'high', lerp(-24, before[dst]?.high ?? 0, trade));
+        const targetGain = Math.sin(Math.min(1, progress / 0.08) * Math.PI / 2);
+        const sourceGain = progress < 0.92 ? 1 : Math.cos(((progress - 0.92) / 0.08) * Math.PI / 2);
+        const cf = document.getElementById('crossfader');
+        if (cf) cf.value = Math.round((this.startPos + (this.endPos - this.startPos) * Math.min(1, progress / 0.92)) * 100);
+        this.router.channels[src].crossfadeGain.gain.value = sourceGain;
+        this.router.channels[dst].crossfadeGain.gain.value = targetGain;
+    }
+
+    // Lines the new song's beat up with the old song's: finds where the old song is within its
+    // beat (from the onsets of the last few seconds) and the new song's first beat after its start
+    // point, then moves the new song so both beats land together at the locked tempo.
+    _alignBeat(sourceDeck, targetDeck, sourceBPM, targetBPM, rate) {
+        // Each side from its decoded audio when there is some, else from the beat measured ahead of
+        // time (analysis.json "beat": where the first beat falls).
+        const sBuf = sourceDeck.wavesurfer?.getDecodedData?.(), tBuf = targetDeck.wavesurfer?.getDecodedData?.();
+        const sBeat = sourceDeck.metadata?.metadata?.beat, tBeat = targetDeck.metadata?.metadata?.beat;
+        if ((!sBuf && sBeat == null) || (!tBuf && tBeat == null)) return;
+        const t0 = performance.now();
+        const HOP = 0.01;
+        const onsets = (buf, from, to) => {
+            const sr = buf.sampleRate, ch = buf.getChannelData(0), hop = Math.floor(sr * HOP);
+            const a = Math.max(0, Math.floor(from * sr)), b = Math.min(ch.length, Math.floor(to * sr));
+            const out = []; let prev = 0;
+            for (let i = a; i + hop <= b; i += hop) { let e = 0; for (let j = i; j < i + hop; j += 4) e += ch[j] * ch[j]; out.push(Math.max(0, e - prev)); prev = e; }
+            return out;
+        };
+        const at = (env, t) => { const k = Math.round(t / HOP); return k >= 0 && k < env.length ? env[k] : 0; };
+        // Old song: seconds since its last beat
+        const now = sourceDeck.getCurrentTime(), Ps = 60 / sourceBPM, span = 6;
+        let phi = 0, best = -1;
+        if (sBuf) {
+            const sEnv = onsets(sBuf, now - span, now);
+            for (let f = 0; f < Ps; f += 0.005) { let sc = 0; for (let k = 0; f + k * Ps < span; k++) sc += at(sEnv, span - f - k * Ps); if (sc > best) { best = sc; phi = f; } }
+        } else phi = (((now - sBeat) % Ps) + Ps) % Ps;
+        // New song: its first beat after the point it starts from
+        const cue = targetDeck.getCurrentTime() || 0, Pt = 60 / targetBPM;
+        let theta = 0; best = -1;
+        if (tBuf) {
+            const tEnv = onsets(tBuf, cue, cue + 8);
+            for (let f = 0; f < Pt; f += 0.005) { let sc = 0; for (let k = 0; f + k * Pt < 8; k++) sc += at(tEnv, f + k * Pt); if (sc > best) { best = sc; theta = f; } }
+        } else theta = (((tBeat - cue) % Pt) + Pt) % Pt;
+        // The old song has moved on while this ran
+        const elapsed = (performance.now() - t0) / 1000;
+        const sincePhase = ((phi + elapsed) % Ps) / Ps;          // 0 to 1 through the old song's beat
+        const seekTo = cue + theta + sincePhase * Pt;            // the same point in the new song's beat
+        if (targetDeck.wavesurfer?.setTime) targetDeck.wavesurfer.setTime(seekTo);
+        console.log(`[Mashup] beats lined up: new song from ${seekTo.toFixed(2)}s (old song ${(sincePhase * 100).toFixed(0)}% through its beat, ${rate.toFixed(3)}x)`);
+    }
+
     // A deck's EQ band as the DJ set it (a killed band keeps its setting aside)
     _bandEQ(id, band) {
         const r = this.router;
@@ -433,6 +506,14 @@ export class AutoTransition {
     // ===== BPM SYNC =====
 
     _animateBpmSync(progress) {
+        if (this.transitionType === 'mashup') {
+            if (!this._mash) return;
+            const deck = this.direction === 'AtoB' ? this.decks.B : this.decks.A;
+            const x = progress < 0.86 ? 0 : Math.min(1, (progress - 0.86) / 0.14);
+            const e = x * x * (3 - 2 * x);
+            deck.setPlaybackRate(this._mash.rate + (this._mash.before - this._mash.rate) * e);
+            return;
+        }
         if (!this._sourceBPM || !this._targetBPM) return;
         if (this._sourceBPM === this._targetBPM) return;
 
@@ -601,6 +682,34 @@ export class AutoTransition {
         if (options.tempoRide) {
             const m = targetDeck.getMediaElement?.();
             if (m) { this._keyLockBefore = { [targetDeck.id]: m.preservesPitch }; m.preservesPitch = true; }
+        }
+
+        // Mashup: the new song runs at the old one's tempo with key lock on, and starts with its
+        // beat lined up on the old song's beat, so the old vocal rides the new beat on time.
+        this._mash = null;
+        if (options.type === 'mashup') {
+            const sourceDeck = direction === 'AtoB' ? this.decks.A : this.decks.B;
+            const sb = Number(options.sourceBPM) || 0, tb = Number(options.targetBPM) || 0;
+            const m = targetDeck.getMediaElement?.();
+            if (m && !this._keyLockBefore) { this._keyLockBefore = { [targetDeck.id]: m.preservesPitch }; m.preservesPitch = true; }
+            const before = targetDeck.currentRate || 1;
+            const lock = sb && tb && sb / tb > 0.84 && sb / tb < 1.19 ? sb / tb : 0;
+            if (lock) targetDeck.setPlaybackRate(lock);
+            this._mash = { rate: lock || before, before };
+            // The new song's audio may still be decoding as it starts: line the beats up as soon as
+            // it is there (within 3 seconds, while the new beat is still fading in), else skip it.
+            if (sb && tb) {
+                let tries = 0;
+                const tryAlign = () => {
+                    if (!this.running && tries > 0) return;
+                    const ready = (d) => d.wavesurfer?.getDecodedData?.() || d.metadata?.metadata?.beat != null;
+                    if (ready(sourceDeck) && ready(targetDeck)) {
+                        try { this._alignBeat(sourceDeck, targetDeck, sb, tb, lock || 1); } catch (e) { console.warn('[Mashup] beat align skipped:', e.message); }
+                    } else if (++tries < 30) setTimeout(tryAlign, 100);
+                    else console.warn('[Mashup] beat align skipped: audio not decoded in time');
+                };
+                setTimeout(tryAlign, 0);
+            }
         }
 
         // Party: the air horn goes off as the new song lands

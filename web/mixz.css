@@ -1097,6 +1097,17 @@ body.stream-view { overflow: hidden; }
 #stream-view .sv-time { font-variant-numeric: tabular-nums; opacity: 0.7; font-weight: 700; }
 #stream-view .sv-next { margin-top: 18px; font-size: clamp(0.9rem, 1.6vw, 1.3rem); opacity: 0.75; }
 #stream-view .sv-viz { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 22vh; }
+/* Twitch chat on /stream (27 Oct): a column on the right, newest at the bottom, old lines fade out */
+#stream-view.has-chat .sv-main { right: 30vw; }
+#stream-view .sv-chat { position: absolute; top: 90px; right: 32px; bottom: calc(22vh + 16px); width: 25vw; min-width: 260px; display: flex; flex-direction: column; background: rgba(5, 6, 10, 0.55); border: 1px solid rgba(145, 70, 255, 0.45); border-radius: 14px; padding: 14px 16px; z-index: 1; }
+#stream-view .sv-chat.hidden { display: none; }
+#stream-view .sv-chat-head { font-weight: 900; letter-spacing: 0.18em; color: #a970ff; font-size: 0.95rem; margin-bottom: 10px; }
+#stream-view .sv-chat-head span { letter-spacing: 0.02em; font-weight: 700; color: rgba(255,255,255,0.6); margin-left: 8px; }
+#stream-view .sv-chat-list { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; overflow: hidden; }
+#stream-view .sv-chat-list:empty::before { content: "Say hi in the chat, it shows up here"; opacity: 0.45; font-weight: 600; }
+#stream-view .sv-chat-line { font-size: clamp(0.95rem, 1.35vw, 1.25rem); line-height: 1.3; overflow-wrap: anywhere; animation: sv-chat-in 0.35s ease-out; }
+#stream-view .sv-chat-line b { color: #a970ff; margin-right: 2px; }
+@keyframes sv-chat-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* press A on /stream: the admin link and code show over the display, nothing else */
 body.stream-view.stream-admin #remote-panel { position: fixed; z-index: 99999; top: 20px; right: 20px; }
 

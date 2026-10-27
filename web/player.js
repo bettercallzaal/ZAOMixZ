@@ -61,7 +61,7 @@ import { TravelMode } from './dj/TravelMode.js';
 import { BeatGridOverlay } from './dj/BeatGridOverlay.js';
 import { Archive } from './dj/Archive.js';
 import { ArtistTab } from './dj/ArtistTab.js';
-import { StreamView } from './dj/StreamView.js';
+import { StreamView, CHAT_KEY } from './dj/StreamView.js';
 
 class DJPlayer {
     constructor() {
@@ -1125,7 +1125,10 @@ class DJPlayer {
                     twitchBtn.textContent = 'JOIN';
                 } else {
                     const channel = document.getElementById('twitch-channel-input')?.value?.trim();
-                    if (channel) this.twitchChat.connectAnonymous(channel);
+                    if (channel) {
+                        this.twitchChat.connectAnonymous(channel);
+                        try { localStorage.setItem(CHAT_KEY, channel); } catch (e) { /* /stream falls back to the default */ }
+                    }
                 }
             });
             this.twitchChat.onConnectionChange = (connected, channel) => {
@@ -1684,7 +1687,10 @@ class DJPlayer {
         // Only a line the filter passes becomes a chat.message stream event (docs/STREAM-EVENTS.md)
         const blocked = this._chatBlocked();
         const line = moderate(msg.message, { blocked }), who = moderate(msg.user, { blocked });
-        if (line.ok && who.ok) this.streamEvents?.emit?.('chat.message', { platform: msg.platform === 'youtube' ? 'youtube' : 'twitch', user: who.text.slice(0, 40), text: line.text });
+        if (line.ok && who.ok) {
+            this.streamEvents?.emit?.('chat.message', { platform: msg.platform === 'youtube' ? 'youtube' : 'twitch', user: who.text.slice(0, 40), text: line.text });
+            this.streamView?.addChat?.({ user: who.text.slice(0, 40), text: line.text.slice(0, 200), color: msg.color });
+        }
         const list = document.getElementById('chat-messages');
         if (!list) return;
 

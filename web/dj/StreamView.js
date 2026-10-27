@@ -29,6 +29,27 @@ export function streamCard(state, art = null) {
     };
 }
 
+// Twitch chat on the display (Zaal, 27 Oct: "upgrade the twitch part ... so we can see the twitch
+// chat in the display"). The channel: ?chat=name in the link, else the one last joined on the desk,
+// else Zaal's. Read-only and anonymous, so the stream tab never needs a Twitch login.
+export const CHAT_KEY = 'mixz-twitch-channel';
+export const DEFAULT_CHAT = 'bettercallzaal';
+export function chatChannel(loc, saved) {
+    const clean = (s) => String(s || '').trim().toLowerCase().replace(/^#/, '').replace(/[^a-z0-9_]/g, '');
+    const fromLink = loc ? new URLSearchParams(loc.search || '').get('chat') : null;
+    if (fromLink !== null) return clean(fromLink);          // ?chat= (empty) turns the chat off
+    return clean(saved) || DEFAULT_CHAT;
+}
+
+// The chat column keeps the newest lines only; each line leaves after a while so old talk fades out.
+export const CHAT_MAX = 8;
+export const CHAT_TTL = 90000;
+export function chatLines(lines, msg, now = Date.now(), max = CHAT_MAX, ttl = CHAT_TTL) {
+    const kept = lines.filter((l) => now - l.at < ttl);
+    if (msg) kept.push({ user: msg.user, text: msg.text, color: msg.color || '', at: now });
+    return kept.slice(-max);
+}
+
 export class StreamView {
     constructor(dj) {
         this.dj = dj;
@@ -41,6 +62,7 @@ export class StreamView {
         requestAnimationFrame(this._tick);
         // /admin talks to this tab through the phone link: keep it on without anyone clicking PHONE
         setTimeout(() => { try { if (!this.dj.remote?.relay) this.dj.remote?.start?.(); } catch (e) { /* admin can still pair by code */ } }, 1500);
+        this._startChat();
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'a' && e.key !== 'A') return;
             if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
@@ -66,9 +88,53 @@ export class StreamView {
                     <div class="sv-next" id="sv-next"></div>
                 </div>
             </div>
+            <div class="sv-chat hidden" id="sv-chat">
+                <div class="sv-chat-head">CHAT <span id="sv-chat-where"></span></div>
+                <div class="sv-chat-list" id="sv-chat-list"></div>
+            </div>
             <canvas class="sv-viz" id="sv-viz"></canvas>`;
         document.body.appendChild(el);
         this.canvas = el.querySelector('#sv-viz');
+    }
+
+    // Join the Twitch chat read-only once the desk is up, unless someone already joined on the desk.
+    _startChat() {
+        let saved = '';
+        try { saved = localStorage.getItem(CHAT_KEY) || ''; } catch (e) { /* private window: use the default */ }
+        this.chatChannel = chatChannel(typeof location !== 'undefined' ? location : null, saved);
+        this.chat = [];
+        if (!this.chatChannel) return;
+        const where = document.getElementById('sv-chat-where');
+        if (where) where.textContent = `twitch.tv/${this.chatChannel}`;
+        document.getElementById('sv-chat')?.classList.remove('hidden');
+        document.getElementById('stream-view')?.classList.add('has-chat');
+        setTimeout(() => {
+            const tc = this.dj.twitchChat;
+            try { if (tc && !tc.isConnected) tc.connectAnonymous(this.chatChannel); } catch (e) { console.warn('stream chat:', e); }
+        }, 2000);
+        setInterval(() => this._paintChat(), 5000);
+    }
+
+    // Called by the desk for each chat line that passed the filter (player._onStreamChatMessage).
+    addChat(msg) {
+        if (!this.chat) return;
+        this.chat = chatLines(this.chat, msg);
+        this._paintChat();
+    }
+
+    _paintChat() {
+        const list = document.getElementById('sv-chat-list');
+        if (!list || !this.chat) return;
+        this.chat = chatLines(this.chat, null);
+        list.replaceChildren(...this.chat.map((l) => {
+            const row = document.createElement('div');
+            row.className = 'sv-chat-line';
+            const who = document.createElement('b');
+            who.textContent = l.user;
+            if (/^#[0-9a-f]{3,8}$/i.test(l.color)) who.style.color = l.color;
+            row.append(who, document.createTextNode(' ' + l.text));
+            return row;
+        }));
     }
 
     _card() {

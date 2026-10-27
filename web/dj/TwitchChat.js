@@ -201,7 +201,7 @@ export class TwitchChat {
                 emotes.push({
                     id, start: r[0], end: r[1],
                     text: message.substring(r[0], r[1] + 1),
-                    url: `https://static-cdn.jtvnps.com/emoticons/v2/${id}/default/dark/1.0`,
+                    url: `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/1.0`,
                 });
             }
         }

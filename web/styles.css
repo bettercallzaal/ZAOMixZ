@@ -3495,6 +3495,41 @@ body:not(.pro-mode) .bottom-row {
     justify-content: space-between;
 }
 
+/* Skip row: plain SKIP plus SKIP 1 / 2 / 3, each its own way out of the song */
+.flow-skip-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.flow-skip-btn {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+    padding: 5px 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--bg-control);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.flow-skip-btn:hover {
+    border-color: var(--accent, var(--meter-red));
+    color: var(--text-primary, inherit);
+}
+
+.flow-skip-btn small {
+    display: block;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+}
+
 .flow-section-label {
     font-family: var(--font-mono);
     font-size: 0.6rem;

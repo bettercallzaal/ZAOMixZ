@@ -81,6 +81,7 @@ export class FlowMode {
     cancelTransition() {
         this._mixToken++;
         this._transitioning = false;
+        this._skipWith = null;
     }
 
     // Called by player.js when AutoTransition is cancelled mid-mix (CANCEL on AUTO, or takeover).
@@ -242,9 +243,19 @@ export class FlowMode {
         this.start(this.queue.shift());
     }
 
-    skip() {
+    // Three ways out of a song, one button each (Zaal, 11 Nov 2026: "need a skip button for songs
+    // where it just fades out to the next one... skip 1 skip 2 skip 3"). Plain SKIP keeps using the
+    // transition set in Settings; these override it for one handover only.
+    static SKIPS = [
+        { n: 1, label: 'FADE', type: 'blend', seconds: 4, title: 'Skip 1: a quick fade into the next song (4 s)' },
+        { n: 2, label: 'ECHO', type: 'echo-out', seconds: 6, title: 'Skip 2: echo the song out, next one comes in (6 s)' },
+        { n: 3, label: 'SWEEP', type: 'filter-sweep', seconds: 8, title: 'Skip 3: filter sweep into the next song (8 s)' },
+    ];
+
+    skip(preset = null) {
         // A second skip mid-mix reloaded the deck coming in and stopped both: one mix at a time.
         if (this.queue.length === 0 || this._transitioning) return;
+        this._skipWith = preset ? { type: preset.type, seconds: preset.seconds } : null;
         this._triggerTransition();
     }
 
@@ -514,12 +525,16 @@ export class FlowMode {
         // A length not known yet (0) is no reason to cut: treat the time left as unlimited
         const dur = out?.getDuration?.() || 0;
         const left = dur > 0 ? dur - (out?.getCurrentTime?.() || 0) : Infinity;
+        // A numbered skip chose its own way out; it applies to this handover only.
+        const skipWith = this._skipWith; this._skipWith = null;
+        const type = skipWith?.type || this.transitionType;
+        const wanted = skipWith?.seconds || this.transitionDuration;
         if (!out?.isPlaying || left <= 1.5) { this._cut(idleDeck, direction, track); return; }
-        const seconds = Math.min(this.transitionDuration, Math.max(1.5, left - 0.5));
+        const seconds = Math.min(wanted, Math.max(1.5, left - 0.5));
         if (engine) {
             try {
                 engine.startProgrammatic(direction, seconds, {
-                    type: this.transitionType,
+                    type,
                     sourceBPM: this.dj.decks[this.currentDeck].getBPM(),
                     targetBPM: this.dj.decks[idleDeck].getBPM(),
                     // DJ MixZ party moves: tempo ride and air horn
@@ -528,7 +543,7 @@ export class FlowMode {
                 if (engine.running) {
                     this._mixing = { track, deck: idleDeck, direction };
                     this._markPlayed(idleDeck, track);
-                    this._handover('started', { from: this.currentDeck, to: idleDeck, type: this.transitionType, seconds: this.transitionDuration, why: this.transitionWhy, title: track.title || null });
+                    this._handover('started', { from: this.currentDeck, to: idleDeck, type, seconds, why: skipWith ? `skip ${skipWith.type}` : this.transitionWhy, title: track.title || null });
                     return;
                 }
             } catch (e) {
@@ -806,7 +821,10 @@ export class FlowMode {
                 <div class="flow-section">
                     <div class="flow-section-header">
                         <div class="flow-section-label">UP NEXT</div>
-                        <button class="flow-skip-btn" id="flow-skip-btn">SKIP</button>
+                        <div class="flow-skip-row">
+                            <button class="flow-skip-btn" id="flow-skip-btn" title="Skip with the transition set in Settings">SKIP</button>
+                            ${FlowMode.SKIPS.map((k) => `<button class="flow-skip-btn flow-skip-preset" data-skip="${k.n}" title="${k.title}">SKIP ${k.n}<small>${k.label}</small></button>`).join('')}
+                        </div>
                     </div>
                     <div class="flow-up-next" id="flow-up-next">
                         <div class="flow-empty-msg">Add tracks to queue below</div>
@@ -873,6 +891,10 @@ export class FlowMode {
         document.getElementById('flow-exit-btn')?.addEventListener('click', () => this.disable());
         document.getElementById('flow-hide-btn')?.addEventListener('click', () => this.setPanelVisible(false));
         document.getElementById('flow-skip-btn')?.addEventListener('click', () => this.skip());
+        document.querySelectorAll?.('.flow-skip-preset').forEach((b) => b.addEventListener('click', () => {
+            const k = FlowMode.SKIPS.find((x) => x.n === Number(b.dataset.skip));
+            if (k) this.skip(k);
+        }));
 
         document.getElementById('flow-trans-type')?.addEventListener('change', (e) => {
             this.transitionType = e.target.value;

@@ -494,5 +494,40 @@ const watch = (flow) => { const log = []; flow.onHandover = (phase, d) => log.pu
     check('a listener that throws never touches playback', flow.currentTrack.title === 'two' && decks.B.isPlaying && !flow._transitioning);
 }
 
+// ── Skip 1 / 2 / 3: each button carries its own transition, for one handover only ──
+console.log('Flow Mode: skip 1, 2, 3 each take their own way out');
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two'), song('three'), song('four')];
+    flow.transitionType = 'blend'; flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    check('three presets, numbered 1 to 3', FlowMode.SKIPS.map((k) => k.n).join() === '1,2,3' && FlowMode.SKIPS.every((k) => k.type && k.seconds > 0 && k.label && k.title));
+    flow.skip(FlowMode.SKIPS[1]); tick(400);
+    check('SKIP 2 mixes with its own type and length, not the Settings ones', eng.starts.length === 1 && eng.starts[0].type === 'echo-out' && eng.starts[0].seconds === 6);
+    eng.finish();
+    check('after it two is live and the preset is gone', flow.currentTrack.title === 'two' && flow._skipWith === null);
+    flow.skip(FlowMode.SKIPS[2]); tick(400);
+    check('SKIP 3 is a filter sweep over 8 s', eng.starts.length === 2 && eng.starts[1].type === 'filter-sweep' && eng.starts[1].seconds === 8);
+    eng.finish();
+    playTo(flow, decks.A, 25); tick(400);
+    check('the automatic handover after a numbered skip is back on the Settings transition', eng.starts.length === 3 && eng.starts[2].type === 'blend' && eng.starts[2].seconds === 8);
+}
+{
+    const { flow, decks, eng } = desk();
+    flow.queue = [song('two')];
+    flow.start(song('one')); tick(400);
+    decks.A.time = decks.A.duration - 3; // three seconds left
+    flow.skip(FlowMode.SKIPS[0]); tick(400);
+    check('SKIP 1 near the very end shortens its fade to fit the song that is left', eng.starts.length === 1 && eng.starts[0].type === 'blend' && eng.starts[0].seconds === 2.5);
+}
+{
+    const { flow, eng } = desk();
+    flow.queue = [song('NEVER'), song('two')];
+    flow.transitionType = 'blend'; flow.transitionDuration = 8;
+    flow.start(song('one')); tick(400);
+    flow.skip(FlowMode.SKIPS[1]); tick(26000);
+    check('a song that never loads after SKIP 2 is dropped, the next one mixes in on the Settings transition', eng.starts.length === 1 && eng.starts[0].type === 'blend' && flow._skipWith === null);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

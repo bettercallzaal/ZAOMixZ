@@ -16,6 +16,31 @@ export const WAVEWARZ_PLAYLIST = 'https://audius.co/CandyToyBoxYT1/playlist/wave
 // (Licence.js), so these need no signed form. The id saves a lookup; the handle is the fallback.
 export const JANGO_AUDIUS = { handle: 'jango.uu', id: 'k2YadvK', name: 'Jango UU' };
 
+// The HOUSE button plays this set, in this order (Zaal, 12 Nov 2026: "add this to zao mixes as a new
+// button for auto dj"). Cut from every WaveWarZ battle song on Audius by genre, tempo, wins and
+// money behind the song: ZAOresearch 2484, "House mix 01". 112 to 128 BPM, one track per artist.
+export const HOUSE_SET = {
+    name: 'House mix 01',
+    tracks: [
+        { id: 'W0V7J0', bpm: 114, title: 'SEVER', artist: 'r3plic4nt' },
+        { id: 'AVQjBJq', bpm: 115, title: 'WHO CUT THE LIGHTS', artist: 'BennyJ504' },
+        { id: 'Waar7EZ', bpm: 115, title: 'IMAN AFRIKAH - RUDE BOY', artist: 'IMan Afrikah' },
+        { id: 'JaloYNZ', bpm: 120, title: 'Is This Real', artist: 'GeEk MyTh' },
+        { id: 'Qkw9N9', bpm: 120, title: 'TWICE Demo', artist: 'LUI' },
+        { id: '620pWoM', bpm: 120, title: 'So High', artist: 'Stilo World' },
+        { id: '5QabGy1', bpm: 120, title: '100z', artist: 'OxQuan' },
+        { id: 'r7PmRAG', bpm: 120.5, title: '3.Emotional Waves', artist: 'Kate Murphy' },
+        { id: '0MVlwQ9', bpm: 122, title: 'OldWavez *NIGHT* Edition x Hurric4n3Ike', artist: 'Hurric4n3Ike' },
+        { id: 'pGm7xKB', bpm: 122, title: 'GodclouD - GOING ROGUE', artist: 'GodclouD' },
+        { id: 'KVoP2Mw', bpm: 123, title: 'wondering_demov2', artist: 'XTincT' },
+        { id: 'Q4VZBVw', bpm: 125, title: 'WaveWarZ, the electric vibez', artist: 'BetterCallZaal' },
+        { id: 'jNMEgWM', bpm: 125, title: 'GODCLOWN', artist: 'KLIPPY' },
+        { id: 'p9Xr100', bpm: 126, title: 'Dile Viento (Original Mix)', artist: 'Yoshiro Mare' },
+        { id: 'R9AgMXj', bpm: 126, title: 'Delicious Desires', artist: 'Stormbourne' },
+        { id: 'o6EJ5Kd', bpm: 127, title: 'Dubbin You Down', artist: 'AporkALYPSE Now' },
+    ],
+};
+
 // Artists of whom only the songs named here play (Zaal, 29 Oct 2026: no N3M3SIS diss songs, ever;
 // IMan: keep her dancehall). Artist and song names squashed, as songKey makes them.
 export const ONLY_SONGS = {
@@ -95,6 +120,21 @@ export function jangoSongs(tracks) {
         seen.add('id:' + t.id); seen.add(k);
         return true;
     }).map(applySheet);
+}
+
+// The HOUSE set as Audius answered it: the set's own order, streamable, not off air, one copy
+// each, and the set's tempo when Audius has none.
+export function houseSongs(tracks) {
+    const byId = new Map((tracks || []).filter((t) => t && t.id).map((t) => [String(t.id), t]));
+    const seen = new Set();
+    return HOUSE_SET.tracks.map((s) => {
+        const t = byId.get(s.id);
+        if (!t || !t.streamUrl || t.streamable === false || offAirTrack(t)) return null;
+        const k = songKey(t);
+        if (seen.has(k)) return null;
+        seen.add(k);
+        return applySheet(t.bpm ? t : { ...t, bpm: s.bpm });
+    }).filter(Boolean);
 }
 
 // Returns the track with the sheet's tempo and key when its title is on the sheet.
@@ -232,6 +272,29 @@ export class ZaoCrate {
             })().finally(() => { this._jango = null; });
         }
         return this._jango;
+    }
+
+    // The HOUSE set from Audius into lib.houseTracks, read once and kept (fresh = true reads again).
+    // Returns the list in set order; empty when Audius did not answer. Two calls at once share one read.
+    async loadHouse(fresh = false) {
+        const lib = this.dj.library;
+        if (!lib) return [];
+        if (!fresh && (lib.houseTracks || []).length) return lib.houseTracks;
+        if (!this._house) {
+            this._house = (async () => {
+                const audius = this.dj.audius;
+                let raw = [];
+                try {
+                    raw = audius?.getTracksByIds ? await audius.getTracksByIds(HOUSE_SET.tracks.map((t) => t.id)) : [];
+                } catch (e) {
+                    console.warn('[ZaoCrate] could not load the HOUSE set from Audius:', e.message);
+                }
+                const songs = houseSongs(raw);
+                if (songs.length) lib.houseTracks = songs;
+                return lib.houseTracks || [];
+            })().finally(() => { this._house = null; });
+        }
+        return this._house;
     }
 
     _buildTab() {

@@ -222,7 +222,7 @@ function draw() {
 function drawTracks(list) {
     const box = $('tracks');
     box.textContent = '';
-    if (!list.length) { box.textContent = trackSrc === 'songchainn' ? 'SongChainn has not been read on the desk yet. Open the ZAO tab there once, or start DJ MixZ from the STREAM tab.' : trackSrc === 'jango' ? "Jango UU's songs did not load from Audius on the desk. Try again in a moment." : 'Nothing here.'; return; }
+    if (!list.length) { box.textContent = trackSrc === 'songchainn' ? 'SongChainn has not been read on the desk yet. Open the ZAO tab there once, or start DJ MixZ from the STREAM tab.' : trackSrc === 'jango' ? "Jango UU's songs did not load from Audius on the desk. Try again in a moment." : trackSrc === 'house' ? 'The HOUSE set did not load from Audius on the desk. Try again in a moment.' : 'Nothing here.'; return; }
     for (const t of list) {
         const row = document.createElement('div'); row.className = 'track';
         const info = document.createElement('div');

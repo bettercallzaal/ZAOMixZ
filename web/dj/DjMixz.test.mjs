@@ -54,6 +54,9 @@ ok('the other sources still work', tracksFrom(lib, 'zao').length === 4 && tracks
 const jg = (id) => ({ id: 'j' + id, title: 'J' + id, artist: 'Jango UU', source: 'audius', streamUrl: 'x' });
 ok('JANGO: only Jango UU songs, and only ones that can play', tracksFrom({ ...lib, jangoTracks: [jg(1), jg(2), { id: 'j3', title: 'no stream', artist: 'Jango UU' }] }, 'jango').map((t) => t.id).join() === 'j1,j2');
 ok('JANGO not read yet: an empty pool, never the library view', tracksFrom(lib, 'jango').length === 0);
+const hs = (id) => ({ id: 'h' + id, title: 'H' + id, artist: 'A' + id, source: 'audius', streamUrl: 'x' });
+ok('HOUSE: the set pool, and only songs that can play', tracksFrom({ ...lib, houseTracks: [hs(1), hs(2), { id: 'h3', title: 'no stream', artist: 'A3' }] }, 'house').map((t) => t.id).join() === 'h1,h2');
+ok('HOUSE not read yet: an empty pool, never the library view', tracksFrom(lib, 'house').length === 0);
 const many = Array.from({ length: 200 }, (_, i) => sc(100 + i, 'A' + (i % 9)));
 ok('session length: 1 hour of SongChainn is about 19 tracks, 4 hours about 75, never more than there are', tracksForMinutes(many, 60) === 19 && tracksForMinutes(many, 240) === 75 && tracksForMinutes(many.slice(0, 10), 240) === 10 && tracksForMinutes(many, 0) === 200);
 ok('session length uses real track lengths when the library has them', tracksForMinutes(Array.from({ length: 50 }, (_, i) => ({ id: i, duration: 120 })), 60) === 34);

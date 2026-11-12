@@ -1,5 +1,5 @@
 // Offline check of the off-air list.   node web/dj/ZaoCrate.test.mjs
-import { OFF_AIR, songKey, artistOffAir, offAirTrack, ONLY_SONGS, JANGO_AUDIUS, jangoSongs, ZaoCrate } from './ZaoCrate.js';
+import { OFF_AIR, songKey, artistOffAir, offAirTrack, ONLY_SONGS, JANGO_AUDIUS, jangoSongs, ZaoCrate, HOUSE_SET, houseSongs } from './ZaoCrate.js';
 
 const off = new Set(OFF_AIR);
 let fail = 0;
@@ -52,6 +52,22 @@ await ZaoCrate.prototype.loadJango.call(fake);
 check(calls === 1, 'loadJango keeps what it read');
 const down = { dj: { library: {}, audius: { getUserIdTracks: async () => { throw new Error('offline'); }, getUserTracks: async () => [] } } };
 check((await ZaoCrate.prototype.loadJango.call(down)).length === 0 && !down.dj.library.jangoTracks, 'Audius down: an empty list, nothing cached');
+
+// HOUSE: the WaveWarZ house set (ZAOresearch 2484), in set order
+const H = (id, extra = {}) => { const s = HOUSE_SET.tracks.find((t) => t.id === id); return { id, title: s.title, artist: s.artist, source: 'audius', streamUrl: 'https://x/' + id, ...extra }; };
+check(HOUSE_SET.tracks.length === 16 && new Set(HOUSE_SET.tracks.map((t) => t.id)).size === 16 && new Set(HOUSE_SET.tracks.map((t) => t.artist)).size === 16, 'the house set is 16 songs, 16 ids, 16 artists');
+check(HOUSE_SET.tracks.every((t, i, a) => i === 0 || a[i - 1].bpm <= t.bpm) && HOUSE_SET.tracks[0].bpm >= 112 && HOUSE_SET.tracks[15].bpm <= 128, 'the set runs 112 to 128 BPM in order');
+const hsongs = houseSongs([H('o6EJ5Kd'), H('W0V7J0'), H('AVQjBJq', { streamable: false }), H('Waar7EZ', { streamUrl: '' }), { id: 'zzz', title: 'Not in the set', artist: 'X', source: 'audius', streamUrl: 'y' }, null]);
+check(hsongs.map((t) => t.id).join() === 'W0V7J0,o6EJ5Kd', 'houseSongs keeps the set order, drops gated, linkless and off-set songs (' + hsongs.map((t) => t.id).join() + ')');
+check(hsongs[0].bpm === 114 && houseSongs([H('W0V7J0', { bpm: 113.5 })])[0].bpm === 113.5, 'the set tempo fills in when Audius has none, Audius wins when it does');
+check(houseSongs(undefined).length === 0 && houseSongs([]).length === 0, 'no answer from Audius gives no songs, not an error');
+const hLib = {};
+let hCalls = 0;
+const hFake = { dj: { library: hLib, audius: { getTracksByIds: async (ids) => { hCalls++; return ids.length === 16 ? [H('W0V7J0'), H('AVQjBJq')] : []; } } } };
+const [h1, h2] = await Promise.all([ZaoCrate.prototype.loadHouse.call(hFake), ZaoCrate.prototype.loadHouse.call(hFake)]);
+check(h1.length === 2 && h2.length === 2 && hLib.houseTracks.length === 2 && hCalls === 1, 'loadHouse asks Audius for all 16 ids once and fills lib.houseTracks');
+const hDown = { dj: { library: {}, audius: { getTracksByIds: async () => { throw new Error('offline'); } } } };
+check((await ZaoCrate.prototype.loadHouse.call(hDown)).length === 0 && !hDown.dj.library.houseTracks, 'Audius down: an empty list, nothing cached');
 
 if (fail) { console.log(`${fail} failed`); process.exit(1); }
 console.log('all passed');

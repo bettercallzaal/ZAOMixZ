@@ -272,6 +272,7 @@ export function tracksFrom(lib, sourceId, artist = '') {
         battles: lib.battleTracks || [],
         wavewarz: lib.wavewarzTracks || [],
         jango: lib.jangoTracks || [],
+        house: lib.houseTracks || [],
         local: lib.tracks || [],
         songchainn: sc,
         'songchainn-artist': sc.filter((t) => names.some((n) => String(t.artist).toLowerCase().includes(n))),
@@ -313,6 +314,7 @@ export class DjMixz {
             { id: 'battles', label: 'WaveWarZ quick battles: last battle night' },
             { id: 'wavewarz', label: 'WaveWarZ Powerhouse playlist (Audius)' },
             { id: 'jango', label: 'JANGO: Jango UU, every song (Audius)' },
+            { id: 'house', label: 'HOUSE: the WaveWarZ house set, 16 songs (Audius)' },
             { id: 'view', label: 'What the library is showing' },
             { id: 'local', label: 'LOCAL tab' },
         ];
@@ -636,6 +638,7 @@ export class DjMixz {
         this.scArtist = [];
         // Jango's songs are read from Audius the first time they are asked for (the phone too).
         if (sourceId === 'jango' && !(this.dj.library?.jangoTracks || []).length) { this._say('Fetching Jango UU from Audius…'); await this.dj.zaoCrate?.loadJango?.(); }
+        if (sourceId === 'house' && !(this.dj.library?.houseTracks || []).length) { this._say('Fetching the HOUSE set from Audius…'); await this.dj.zaoCrate?.loadHouse?.(); }
         const plan = this.build(sourceId, moodId, minutes);
         if (plan.length < 2) { this._say('Fewer than two playable tracks there. Pick another source.'); return false; }
         return this.start();
@@ -716,10 +719,27 @@ export class DjMixz {
         return ok;
     }
 
-    // The WAVEWARZ and JANGO buttons light up for the music that is playing, and only that one.
+    // HOUSE: the 16-song WaveWarZ house set from Audius (ZAOresearch 2484), straight into an
+    // endless PARTY set (Zaal, 12 Nov 2026: "add this to zao mixes as a new button for auto dj").
+    // A second tap goes back to the ZAO crate. Nothing found means no set.
+    async toggleHouse() {
+        const on = this._lastBuild?.sourceId !== 'house' || !this.running;
+        if (on) {
+            if (!(this.dj.library?.houseTracks || []).length) this._say('Fetching the HOUSE set from Audius…');
+            const songs = (await this.dj.zaoCrate?.loadHouse?.()) || [];
+            if (!songs.length) { this._say('HOUSE: the set did not load from Audius. Check the connection and tap HOUSE again.'); return false; }
+            if (songs.length < 2) { this._say('HOUSE: only one song of the set plays right now, a set needs two.'); return false; }
+        }
+        const ok = await this.startFrom(on ? 'house' : 'zao', on ? 'party' : this.mood, 60, true);
+        this._markSourceButtons(ok === false ? '' : on ? 'house' : 'zao');
+        if (ok !== false) this._say(on ? 'HOUSE: playing the WaveWarZ house set.' : 'Back to the ZAO crate.');
+        return ok;
+    }
+
+    // The WAVEWARZ, JANGO and HOUSE buttons light up for the music that is playing, and only that one.
     _markSourceButtons(sourceId) {
         if (typeof document === 'undefined') return;
-        for (const [id, src] of [['wavewarz-btn', 'wavewarz'], ['jango-btn', 'jango']]) {
+        for (const [id, src] of [['wavewarz-btn', 'wavewarz'], ['jango-btn', 'jango'], ['house-btn', 'house']]) {
             const b = document.getElementById(id);
             if (b) { b.classList.toggle('active', sourceId === src); b.setAttribute('aria-pressed', String(sourceId === src)); }
         }
@@ -903,6 +923,17 @@ export class DjMixz {
         jg.addEventListener('click', () => this.toggleJango());
         ww.insertAdjacentElement('afterend', jg);
 
+        // HOUSE beside it: one tap plays the WaveWarZ house set from Audius (ZAOresearch 2484),
+        // a second tap goes back to the ZAO crate (Zaal, 12 Nov).
+        const hs = document.createElement('button');
+        hs.id = 'house-btn';
+        hs.className = 'btn-toolbar wavewarz-btn house-btn';
+        hs.title = 'Play the WaveWarZ house set, 16 songs. Tap again for the ZAO crate';
+        hs.textContent = 'HOUSE';
+        hs.setAttribute('aria-pressed', 'false');
+        hs.addEventListener('click', () => this.toggleHouse());
+        jg.insertAdjacentElement('afterend', hs);
+
         // STREAM PAGE: opens /stream, the page to put on the live stream.
         const sp = document.createElement('a');
         sp.id = 'stream-page-btn';
@@ -912,7 +943,7 @@ export class DjMixz {
         sp.rel = 'noopener';
         sp.title = 'Open the /stream page for the live stream';
         sp.textContent = 'STREAM PAGE';
-        jg.insertAdjacentElement('afterend', sp);
+        hs.insertAdjacentElement('afterend', sp);
 
         const panel = document.createElement('div');
         panel.id = 'djmixz-panel';
@@ -1097,6 +1128,11 @@ export class DjMixz {
         });
         panel.querySelector('#djmixz-source').addEventListener('change', async (e) => {
             const pick = e.target.value === 'songchainn-artist'; artistSel.hidden = !pick;
+            if (e.target.value === 'house' && !(this.dj.library?.houseTracks || []).length) {
+                this._say('Fetching the HOUSE set from Audius…');
+                const songs = (await this.dj.zaoCrate?.loadHouse?.()) || [];
+                this._say(songs.length ? `${songs.length} of the house set in. Pick a mood, then build the set.` : 'The HOUSE set did not load from Audius. Check the connection and pick HOUSE again.');
+            }
             if (e.target.value === 'jango' && !(this.dj.library?.jangoTracks || []).length) {
                 this._say('Fetching Jango UU from Audius…');
                 const songs = (await this.dj.zaoCrate?.loadJango?.()) || [];

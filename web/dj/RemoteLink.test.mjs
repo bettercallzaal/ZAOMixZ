@@ -97,8 +97,9 @@ check('the state names the deck the room hears, the live flag and the DJ MixZ pl
 // The STREAM tab
 check('a stream order is cleaned to known music, mood and length', JSON.stringify(cleanCommand({ a: 'stream', src: 'zao', mood: 'party', minutes: 90, endless: 1 })) === '{"a":"stream","src":"zao","mood":"party","minutes":90,"endless":true}');
 check('a stream order with rubbish falls back to SongChainn, journey, one hour', JSON.stringify(cleanCommand({ a: 'stream', src: 'evil', mood: 'x', minutes: 7 })) === '{"a":"stream","src":"songchainn","mood":"journey","minutes":60,"endless":false}');
-check('tracks can be asked by source, unknown sources mean the view', cleanCommand({ a: 'tracks', src: 'songchainn' }).src === 'songchainn' && cleanCommand({ a: 'tracks', src: 'x' }).src === 'view' && TRACK_SOURCES.length === 5);
+check('tracks can be asked by source, unknown sources mean the view', cleanCommand({ a: 'tracks', src: 'songchainn' }).src === 'songchainn' && cleanCommand({ a: 'tracks', src: 'x' }).src === 'view' && TRACK_SOURCES.length === 6);
 check('the phone can browse and stream JANGO', cleanCommand({ a: 'tracks', src: 'jango' }).src === 'jango' && cleanCommand({ a: 'stream', src: 'jango' }).src === 'jango');
+check('the phone can browse and stream HOUSE', cleanCommand({ a: 'tracks', src: 'house' }).src === 'house' && cleanCommand({ a: 'stream', src: 'house' }).src === 'house');
 check('skip, share, endless and live are known', cleanCommand({ a: 'skip' })?.a === 'skip' && cleanCommand({ a: 'share' })?.a === 'share' && cleanCommand({ a: 'endless', on: 1 })?.on === true && cleanCommand({ a: 'live', on: 0 })?.on === false);
 r = rig({ running: false, human: false });
 r.dj.djMixz.startFrom = (s, m, min, e) => r.log.push(`startFrom ${s} ${m} ${min} ${e}`);

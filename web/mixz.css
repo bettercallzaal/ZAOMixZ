@@ -1086,6 +1086,8 @@ body:not(.pro-mode) .top-bar #flow-toggle-btn { padding: 10px 26px; font-size: 0
 .top-bar .wavewarz-btn.active { background: #39d0ff; color: #05060a; box-shadow: 0 0 14px rgba(57, 208, 255, 0.5); }
 .top-bar .jango-btn { color: #ffc23d; border-color: rgba(255, 194, 61, 0.55); }
 .top-bar .jango-btn.active { background: #ffc23d; color: #05060a; box-shadow: 0 0 14px rgba(255, 194, 61, 0.5); }
+.top-bar .house-btn { color: #4de3c1; border-color: rgba(77, 227, 193, 0.55); }
+.top-bar .house-btn.active { background: #4de3c1; color: #05060a; box-shadow: 0 0 14px rgba(77, 227, 193, 0.5); }
 .top-bar .stream-page-btn { color: #f5f5f5; border: 1.5px solid rgba(245, 245, 245, 0.4); background: rgba(5, 6, 10, 0.85); font-weight: 800; letter-spacing: 0.08em; margin-left: 6px; text-decoration: none; display: inline-flex; align-items: center; }
 
 /* An artist page with no songs yet: a clear card, not a small grey line (ArtistTab.js) */

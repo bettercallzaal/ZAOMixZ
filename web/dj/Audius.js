@@ -73,6 +73,14 @@ export class Audius {
         return (data.data || []).map(t => this._normalizeTrack(t));
     }
 
+    // Several tracks at once by their Audius ids (the HOUSE set). Missing or private ids are left out.
+    async getTracksByIds(ids) {
+        const list = (ids || []).map((id) => encodeURIComponent(id)).filter(Boolean);
+        if (!list.length) return [];
+        const data = await this._apiGet(`/v1/tracks?${list.map((id) => 'id=' + id).join('&')}`);
+        return (data.data || []).map(t => this._normalizeTrack(t));
+    }
+
     // One track by its page link (audius.co/<handle>/<song>), or null. `accept` sees what Audius
     // found before it counts (SongLink.audiusExact: that exact track, public and streamable).
     async resolveTrack(url, accept = () => true) {

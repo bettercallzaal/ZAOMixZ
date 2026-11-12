@@ -23,7 +23,7 @@ import { isBlocked } from './SongChainn.js';
 
 export const STATE_HZ = 5;
 export const NEXT_MODES = ['smooth', 'up', 'down', 'key', 'mood', 'genre', 'double', 'wild'];
-export const TRACK_SOURCES = ['view', 'zao', 'songchainn', 'local', 'jango'];
+export const TRACK_SOURCES = ['view', 'zao', 'songchainn', 'local', 'jango', 'house'];
 export const SET_MINUTES = [0, 15, 30, 60, 90, 120, 180, 240];
 const MOOD_IDS = MOODS.map((m) => m.id);
 
@@ -438,6 +438,7 @@ export class RemoteHost {
             };
             // Jango's songs are read from Audius the first time anyone asks for them.
             if (cmd.src === 'jango' && !(lib.jangoTracks || []).length && this.dj.zaoCrate?.loadJango) { this.dj.zaoCrate.loadJango().then(answer, answer); return; }
+            if (cmd.src === 'house' && !(lib.houseTracks || []).length && this.dj.zaoCrate?.loadHouse) { this.dj.zaoCrate.loadHouse().then(answer, answer); return; }
             answer();
             return;
         }

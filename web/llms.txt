@@ -20,6 +20,7 @@ Every song the decks play has a licence: who the artist is, and what they allow 
 - **DJ MIXZ**: opens the auto DJ (see "DJ MixZ" below).
 - **WAVEWARZ**: one tap and DJ MixZ plays a nonstop set from the WaveWarZ Powerhouse playlist on Audius. Tap again to go back to the ZAO crate.
 - **JANGO**: one tap and DJ MixZ plays a nonstop set of only Jango's songs, from his Audius page (Jango UU). It starts right away. Tap again to go back to the ZAO crate. If Audius does not answer, it says so and nothing starts.
+- **HOUSE**: one tap and DJ MixZ plays a nonstop PARTY set of the WaveWarZ house set: 16 battle songs from Audius picked by genre and tempo (112 to 128 BPM), one per artist. Tap again to go back to the ZAO crate. If Audius does not answer, it says so and nothing starts.
 - **AUTO MIX**: the older auto mix. It picks the next song and mixes it in when the current one ends.
 - **LIBRARY**: opens the music library over the decks, full screen. Close it to see the decks again.
 - **PHONE**: shows a QR code. Scan it with your phone and the phone becomes a remote: run the set, move the crossfader, listen along, from anywhere.
@@ -86,7 +87,7 @@ On each song: **A** or **B** loads it on that deck, **+** adds it to the queue, 
 ## DJ MixZ, the auto DJ
 
 Press DJ MIXZ in the top bar.
-1. Pick where the songs come from: SongChainn (every artist or one artist), the ZAO crate, last night's WaveWarZ battle songs, the WaveWarZ Powerhouse playlist, Jango's songs, or whatever the library is showing.
+1. Pick where the songs come from: SongChainn (every artist or one artist), the ZAO crate, last night's WaveWarZ battle songs, the WaveWarZ Powerhouse playlist, Jango's songs, the HOUSE set, or whatever the library is showing.
 2. Pick a mood: WARM UP, PEAK TIME, JOURNEY (build to a peak, then come down), SUNSET, or PARTY (waves).
 3. Pick how long: 15 minutes to 4 hours, or endless.
 4. Press start. It plans the set, then mixes each song into the next: blends, quick cuts and echo outs, chosen to fit the songs.

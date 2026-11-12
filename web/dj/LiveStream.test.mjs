@@ -1,6 +1,7 @@
 // node web/dj/LiveStream.test.mjs — one link per stream: links, the card message, and /api/live.
 import { createRequire } from 'module';
 import crypto from 'crypto';
+import { readFileSync } from 'fs';
 import { streamIdFrom, lobbyFrom, cardMessage, hearingMix, STREAM_ID } from './LiveStream.js';
 
 const require = createRequire(import.meta.url);
@@ -15,6 +16,16 @@ check('/stream/zaal and /stream are not', streamIdFrom('/stream/zaal') === '' &&
 check('/lobby/<name> names the lobby', lobbyFrom('/lobby/Zaal') === 'zaal' && lobbyFrom('/lobby/') === '' && lobbyFrom('/lobby/x') === '');
 check('new ids are 8 digits and differ', [...Array(50)].map(live.newId).every((id) => STREAM_ID.test(id)) && new Set([...Array(50)].map(live.newId)).size > 45);
 check('lobby names are cleaned', live.cleanLobby(' Zaal ') === 'zaal' && live.cleanLobby('<script>') === '' && live.cleanLobby('') === '');
+
+// The route for a stream link: /stream/<8 digits> must open the listen page, not the desk.
+// (vercel.json once said `d{8}` with no backslash, so every stream link opened the DJ desk.)
+const routes = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')).rewrites;
+const routeFor = (path) => routes.find((r) => {
+    const src = r.source.replace(/:\w+\(([^)]*)\)/g, '($1)').replace(/:\w+/g, '([^/]+)');
+    return new RegExp(`^${src}$`).test(path);
+})?.destination;
+check('route: /stream/<8 digits> opens the listen page', routeFor('/stream/73822762') === '/listen.html');
+check('route: /stream/<lobby> and /stream open the desk', routeFor('/stream/zaal') === '/index.html' && routeFor('/stream') === '/index.html');
 
 // The card message stays small and safe
 const m = cardMessage({ on: true, title: 'x'.repeat(200), artist: 'IMan', progress: 0.123456, time: '1:00 / 4:00', next: 'Topier', deck: 'B', art: 'javascript:alert(1)' });

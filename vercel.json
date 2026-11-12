@@ -15,7 +15,7 @@
       "destination": "/index.html"
     },
     {
-      "source": "/stream/:id(d{8})",
+      "source": "/stream/:id(\\d{8})",
       "destination": "/listen.html"
     },
     {

@@ -148,6 +148,7 @@
             player.play().catch(() => {});
             $('bar').classList.remove('hidden');
             $('bar-title').textContent = t.title; $('bar-artist').textContent = t.artist;
+            nowPlaying({ title: t.title, artist: t.artist, album: $('name').textContent || 'ZAO MixZ', art: t.art });
             draw();
         };
         // Songs added while one plays are picked up here: the list is read again at each step

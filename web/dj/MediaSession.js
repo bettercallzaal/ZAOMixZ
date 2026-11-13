@@ -11,7 +11,7 @@ const has = () => typeof globalThis.navigator === 'object' && globalThis.navigat
 export function nowPlaying({ title, artist, album, art } = {}) {
     if (!has() || typeof globalThis.MediaMetadata !== 'function') return false;
     const artwork = typeof art === 'string' && /^https:\/\//.test(art)
-        ? [{ src: art.slice(0, 400), sizes: '512x512', type: 'image/jpeg' }]
+        ? [{ src: art.slice(0, 400), type: /\.png(\?|$)/i.test(art) ? 'image/png' : /\.webp(\?|$)/i.test(art) ? 'image/webp' : 'image/jpeg' }]
         : [];
     try {
         globalThis.navigator.mediaSession.metadata = new globalThis.MediaMetadata({

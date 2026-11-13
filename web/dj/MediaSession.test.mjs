@@ -37,5 +37,22 @@ check('lock-screen buttons call through', played === 1 && nexted === 1);
 delete globalThis.MediaMetadata;
 check('no MediaMetadata: nowPlaying returns false', nowPlaying({ title: 'x' }) === false);
 
+
+// 4. The pages that play: each one hands the song to the lock screen when it starts a track.
+// (The shared-mix page once imported nowPlaying and never called it, so the widget read 'ZAO MixZ' with no song.)
+const { readFileSync } = await import('node:fs');
+const here = new URL('.', import.meta.url);
+const mixPage = readFileSync(new URL('../mix.html', here), 'utf8');
+const playN = mixPage.slice(mixPage.indexOf('const playN = '), mixPage.indexOf('const step = '));
+check('mix.html: playN sets Now Playing (title, artist, album, art) when a song starts', /nowPlaying\(\{[^}]*title[^}]*artist[^}]*album[^}]*art[^}]*\}\)/.test(playN));
+check('mix.html: lock-screen buttons are wired (mediaActions with next and prev)', /mediaActions\(\{[\s\S]*?next:[\s\S]*?prev:[\s\S]*?\}\)/.test(mixPage));
+const livePage = readFileSync(new URL('../listen.html', here), 'utf8');
+check('listen.html: the live stream sets Now Playing', /nowPlaying\(\{/.test(livePage));
+// section 3 removed MediaMetadata; put the fake API back for the artwork checks
+globalThis.navigator = { mediaSession: session };
+globalThis.MediaMetadata = class { constructor(o) { Object.assign(this, o); } };
+check('artwork type follows the file: png', (() => { nowPlaying({ title: 'a', art: 'https://x.test/c.png' }); return session.metadata.artwork[0].type === 'image/png'; })());
+check('artwork type follows the file: jpeg default', (() => { nowPlaying({ title: 'a', art: 'https://x.test/c.jpg?x=1' }); return session.metadata.artwork[0].type === 'image/jpeg'; })());
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

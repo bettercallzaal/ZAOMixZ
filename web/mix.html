@@ -79,6 +79,7 @@
     <script type="module">
         import { decodeMix, resolveTracks, fmtTime, mixLength } from './dj/MixPage.js';
         import { parseMixHash, watchLive, watchRoom, roomHeld, isLiveNow } from './dj/LiveMix.js';
+        import { nowPlaying, playbackState, mediaActions } from './dj/MediaSession.js';
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         $('copy').onclick = () => { navigator.clipboard?.writeText(location.href); $('copy').textContent = 'COPIED'; setTimeout(() => { $('copy').textContent = 'COPY THIS LINK'; }, 1500); };
@@ -147,11 +148,15 @@
             player.play().catch(() => {});
             $('bar').classList.remove('hidden');
             $('bar-title').textContent = t.title; $('bar-artist').textContent = t.artist;
+            nowPlaying({ title: t.title, artist: t.artist, album: $('name').textContent || 'ZAO MixZ', art: t.art });
             draw();
         };
         // Songs added while one plays are picked up here: the list is read again at each step
         const step = (dir) => { const ns = playable().map((t) => t.n); const i = ns.indexOf(cur); const next = ns[i + dir]; if (next != null) playN(next); else if (dir > 0) { player.pause(); $('bar').classList.add('hidden'); draw(); } };
         player.addEventListener('ended', () => step(1));
+        player.addEventListener('play', () => playbackState('playing'));
+        player.addEventListener('pause', () => playbackState('paused'));
+        mediaActions({ play: () => player.play().catch(() => {}), pause: () => player.pause(), next: () => step(1), prev: () => step(-1) });
         player.addEventListener('timeupdate', () => { $('bar-prog').style.width = player.duration ? `${(player.currentTime / player.duration) * 100}%` : '0'; });
         $('play-all').onclick = () => { const first = playable()[0]; if (first) playN(first.n); };
         $('bar-next').onclick = () => step(1);

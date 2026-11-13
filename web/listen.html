@@ -55,6 +55,7 @@
     </main>
     <script type="module">
         import { listen, streamIdFrom, lobbyFrom } from './dj/LiveStream.js';
+        import { nowPlaying, playbackState, mediaActions } from './dj/MediaSession.js';
         const $ = (id) => document.getElementById(id);
         const say = (t) => { $('status').textContent = t; };
         const audio = $('audio');
@@ -63,6 +64,8 @@
         function card(c) {
             $('title').textContent = c.on ? (c.title || 'Untitled') : 'ZAO MixZ';
             $('artist').textContent = c.on ? c.artist : 'Back in a moment';
+            // Lock screen and Control Centre: the song, not just "ZAO MixZ".
+            nowPlaying({ title: c.on ? (c.title || 'Untitled') : 'ZAO MixZ', artist: c.on ? c.artist : 'Back in a moment', album: 'ZAO MixZ, live', art: c.art });
             $('time').textContent = c.time || '';
             $('next').textContent = c.next ? `Up next: ${c.next}` : '';
             $('fill').style.width = `${Math.round((c.progress || 0) * 1000) / 10}%`;
@@ -74,6 +77,7 @@
             const on = s === 'playing';
             $('live').classList.toggle('on', on);
             $('live').textContent = on ? 'LIVE' : 'OFF AIR';
+            playbackState(on ? 'playing' : 'paused');
             if (s === 'playing') say('');
             if (s === 'waiting') say('Connected. Waiting for the DJ to send the mix.');
             if (s === 'ended') say('This stream has ended.');
@@ -100,6 +104,8 @@
                 const id = await resolveId();
                 if (!id) { say('This link has no stream in it. Ask the DJ for the stream link.'); $('go').textContent = 'TAP TO LISTEN'; started = false; return; }
                 await listen(id, { onCard: card, onState: state, audioEl: audio });
+                // A live stream has no pause: the lock-screen buttons mute and unmute.
+                mediaActions({ play: () => { audio.muted = false; $('go').textContent = 'MUTE'; }, pause: () => { audio.muted = true; $('go').textContent = 'UNMUTE'; } });
                 await audio.play().catch(() => {});
                 $('go').textContent = 'MUTE';
                 $('go').classList.add('ghost');

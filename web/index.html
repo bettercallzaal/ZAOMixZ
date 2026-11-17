@@ -27,7 +27,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/mixz-192.png">
 
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="mixz.css?v=30">
+    <link rel="stylesheet" href="mixz.css?v=31">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1865,5 +1865,17 @@
             </div>
         </div>
     </div>
+    <!-- Phones: the song list sits under both decks, about three screens down. One tap gets there (Zaal, 17 Nov). -->
+    <button type="button" id="jump-songs" class="jump-songs" aria-label="Jump to the song list">SONGS</button>
+    <script>
+      (function () {
+        var b = document.getElementById("jump-songs"), lib = document.getElementById("library");
+        if (!b || !lib) return;
+        b.addEventListener("click", function () { lib.scrollIntoView({ block: "start" }); });
+        if ("IntersectionObserver" in window) {
+          new IntersectionObserver(function (e) { b.classList.toggle("hidden-jump", e[0].isIntersecting); }).observe(lib);
+        }
+      })();
+    </script>
 </body>
 </html>

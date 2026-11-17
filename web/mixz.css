@@ -1229,3 +1229,16 @@ body:not(.pro-mode) .top-bar #master-meter { display: none; }
     #library-table td.lib-actions .btn-playlist-add { display: none; }
     #library-table th, #library-table td { padding-left: 6px; padding-right: 6px; }
 }
+
+/* SONGS jump button: phones only, hides once the song list is on screen */
+.jump-songs { display: none; }
+@media (max-width: 600px) {
+    .jump-songs {
+        display: block; position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 60;
+        padding: 10px 16px; border-radius: 999px; border: 1px solid var(--mz-line-hi);
+        background: linear-gradient(180deg, #1b1e2a, #12141c); color: var(--mz-text);
+        font-family: var(--font-mono); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.12em;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+    .jump-songs.hidden-jump { display: none; }
+}

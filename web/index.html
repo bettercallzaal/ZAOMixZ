@@ -27,7 +27,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/mixz-192.png">
 
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="mixz.css?v=30">
+    <link rel="stylesheet" href="mixz.css?v=32">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1865,5 +1865,32 @@
             </div>
         </div>
     </div>
+    <!-- Phones: the top bar was a wall of buttons (Zaal, 17 Nov: "Too much"). Logo, SIMPLE/PRO and one MENU; the rest opens from MENU. -->
+    <script>
+      (function () {
+        var bar = document.querySelector(".top-bar"), logo = bar && bar.querySelector(".logo");
+        if (!bar || !logo || document.getElementById("mz-menu-btn")) return;
+        var b = document.createElement("button");
+        b.type = "button"; b.id = "mz-menu-btn"; b.className = "btn-toolbar mz-menu-btn"; b.textContent = "MENU";
+        b.setAttribute("aria-expanded", "false");
+        b.addEventListener("click", function () {
+          var open = document.body.classList.toggle("mz-menu-open");
+          b.textContent = open ? "CLOSE" : "MENU"; b.setAttribute("aria-expanded", String(open));
+        });
+        logo.insertAdjacentElement("afterend", b);
+      })();
+    </script>
+    <!-- Phones: the song list sits under both decks, about three screens down. One tap gets there (Zaal, 17 Nov). -->
+    <button type="button" id="jump-songs" class="jump-songs" aria-label="Jump to the song list">SONGS</button>
+    <script>
+      (function () {
+        var b = document.getElementById("jump-songs"), lib = document.getElementById("library");
+        if (!b || !lib) return;
+        b.addEventListener("click", function () { lib.scrollIntoView({ block: "start" }); });
+        if ("IntersectionObserver" in window) {
+          new IntersectionObserver(function (e) { b.classList.toggle("hidden-jump", e[0].isIntersecting); }).observe(lib);
+        }
+      })();
+    </script>
 </body>
 </html>
